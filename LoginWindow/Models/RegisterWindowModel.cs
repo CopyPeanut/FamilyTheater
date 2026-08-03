@@ -1,4 +1,5 @@
 ﻿using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Enum;
 using FamilyTheater.Core.Helper;
 using HandyControl.Controls;      // MessageBox、Growl 等控件
 using HandyControl.Data;
@@ -11,9 +12,9 @@ using System.Reactive.Linq;
 using System.Windows;
 namespace LoginWindow.Models
 {
-    public class RegisterWindowModel:ReactiveObject
+    public class RegisterWindowModel : ReactiveObject
     {
-        private readonly AppDbContext _dbContext; 
+        private readonly AppDbContext _dbContext;
         public RegisterWindowModel(AppDbContext dbContext)
         {
             _dbContext = dbContext;
@@ -37,38 +38,37 @@ namespace LoginWindow.Models
         {
             if (IsRegistering) return;
             IsRegistering = true;
-            if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(Password) || string.IsNullOrEmpty(ConfirmPassword))
-            {
-                CustomMessageBox.Show("注册信息不能为空");           //MessageBox.Show("用户名或密码不能为空");
-                return;
-            }
-            // 1️⃣ 前端基础校验
-            if (Password != ConfirmPassword)
-            {
-                
-                return;
-            }
-
-            if (Password.Length < 6)
-            {
-               
-                return;
-            }
-
-            // 2️⃣ 检查用户名是否已存在
-            var exists = await _dbContext.Users
-                .AnyAsync(u => u.Username == UserName.Trim());
-
-            if (exists)
-            {
-              
-                return;
-            }
-
-            // 3️⃣ 创建用户并写入数据库
-            IsRegistering = true;
             try
             {
+                if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(Password) || string.IsNullOrEmpty(ConfirmPassword))
+                {
+                    CustomMessageBox.Show("注册信息不能为空", LogLevel.ERROR);
+                    return;
+                }
+                // 1️⃣ 前端基础校验
+                if (Password != ConfirmPassword)
+                {
+                    CustomMessageBox.Show("密码不一致，请检查",LogLevel.WARN);
+                    Password = ConfirmPassword = "";
+                }
+
+                if (Password.Length < 6)
+                {
+                    CustomMessageBox.Show("密码至少需六位", LogLevel.WARN);
+                    Password = ConfirmPassword = "";
+                    return;
+                }
+
+                // 2️⃣ 检查用户名是否已存在
+                var exists = await _dbContext.Users
+                    .AnyAsync(u => u.Username == UserName.Trim());
+
+                if (exists)
+                {
+                    CustomMessageBox.Show("该用户名已被注册", LogLevel.WARN);
+                    return;
+                }
+
                 var user = new User
                 {
                     Username = UserName.Trim(),
@@ -77,6 +77,7 @@ namespace LoginWindow.Models
 
                 _dbContext.Users.Add(user);
                 await _dbContext.SaveChangesAsync();
+                CustomMessageBox.Show("注册成功！");
             }
             finally
             {

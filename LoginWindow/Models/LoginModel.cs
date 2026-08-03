@@ -1,5 +1,7 @@
 ﻿using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Enum;
 using FamilyTheater.Core.Helper;
+using LoginWindow.Views;
 using Microsoft.EntityFrameworkCore;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -32,7 +34,7 @@ namespace LoginWindow.Models
         {
             if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(Password))
             {
-                MessageBox.Show("用户名或密码不能为空");
+                CustomMessageBox.Show("用户名或密码不能为空",LogLevel.ERROR);
                 return;
             }
             var user = await _dbContext.Users
@@ -44,12 +46,12 @@ namespace LoginWindow.Models
             if (user != null && LoginHelper.VerifyPassword(Password, user.PasswordHash))
             {
 
-                MessageBox.Show("登录成功");
+                CustomMessageBox.Show("登录成功");
 
             }
             else
             {
-                MessageBox.Show("登录失败");
+                CustomMessageBox.Show("密码或用户名错误！",LogLevel.ERROR);
             }
             #endregion
         }
