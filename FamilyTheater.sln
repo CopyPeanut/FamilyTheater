@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37111.16
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoginWindow", "LoginWindow\LoginWindow.csproj", "{2E3EE9F8-AC61-4318-8DA0-047E986A2E04}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FamilyTheater.Core", "FamilyTheater.Core\FamilyTheater.Core.csproj", "{AFDF33B9-20D5-4485-AA12-48DC82A630E6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2E3EE9F8-AC61-4318-8DA0-047E986A2E04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E3EE9F8-AC61-4318-8DA0-047E986A2E04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E3EE9F8-AC61-4318-8DA0-047E986A2E04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E3EE9F8-AC61-4318-8DA0-047E986A2E04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AFDF33B9-20D5-4485-AA12-48DC82A630E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFDF33B9-20D5-4485-AA12-48DC82A630E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFDF33B9-20D5-4485-AA12-48DC82A630E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFDF33B9-20D5-4485-AA12-48DC82A630E6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {ED8908F3-C62B-4410-9C60-60D1DF5BAF24}
+	EndGlobalSection
+EndGlobal

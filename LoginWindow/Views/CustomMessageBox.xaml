@@ -1,0 +1,41 @@
+﻿<Window x:Class="LoginWindow.Views.CustomMessageBox"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:LoginWindow.Views"
+        mc:Ignorable="d"
+        Title="CustomMessageBox" Width="420" Height="250"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        >
+    <Grid Margin="24,20,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 图标 + 标题 -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <Path x:Name="IconPath" Width="28" Height="28" Stretch="Uniform"
+                  Fill="{DynamicResource PrimaryBrush}" Margin="0,0,12,0"/>
+            <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- 消息内容（支持换行） -->
+        <TextBlock Grid.Row="1" Text="{Binding Message}" TextWrapping="Wrap"
+                   FontSize="14" LineHeight="22" VerticalAlignment="Top"/>
+
+        <!-- 按钮区 -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,20,0,0">
+            <Button x:Name="BtnCancel" Content="取 消" MinWidth="80" Margin="0,0,12,0"
+                    Style="{StaticResource ButtonDefault}" Click="OnCancel"/>
+            <Button x:Name="BtnConfirm" Content="确 定" MinWidth="80"
+                    Style="{StaticResource ButtonPrimary}" Click="OnConfirm"/>
+        </StackPanel>
+    </Grid>
+</Window>
