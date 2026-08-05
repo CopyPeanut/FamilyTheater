@@ -10,11 +10,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resource\cog-fill-b.png" />
+    <None Remove="Resource\cog-fill-w.png" />
     <None Remove="Resource\key.ico" />
+    <None Remove="Resource\user-group-b.png" />
+    <None Remove="Resource\user-group-w.png" />
     <None Remove="Resource\user.ico" />
+    <None Remove="Resource\三极酷圆简体.ttf" />
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Resource\cog-fill-b.png" />
+    <Resource Include="Resource\cog-fill-w.png" />
+    <Resource Include="Resource\user-group-b.png" />
+    <Resource Include="Resource\user-group-w.png" />
     <Resource Include="Resource\user.ico" />
   </ItemGroup>
 	<ItemGroup>
@@ -34,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resource\key.ico" />
+    <Resource Include="Resource\三极酷圆简体.ttf" />
   </ItemGroup>
 
 </Project>

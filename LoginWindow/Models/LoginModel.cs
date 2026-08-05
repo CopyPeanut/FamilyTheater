@@ -13,10 +13,12 @@ namespace LoginWindow.Models
     public class LoginModel : ReactiveObject
     {
         public readonly AppDbContext _dbContext;
-        public LoginModel(AppDbContext dbContext)
+        private readonly Func<HomeWindow> _homeWindowFactory;
+        public LoginModel(AppDbContext dbContext, Func<HomeWindow> homeWindowFactory)
         {
             _dbContext = dbContext;
             LoginCmd = ReactiveCommand.Create(OnLogin);
+            _homeWindowFactory = homeWindowFactory;
         }
 
         #region 属性
@@ -24,7 +26,7 @@ namespace LoginWindow.Models
         public string UserName { get; set; }
         [Reactive]
         public string Password { get; set; }
-
+        public event Action LoginSuccess;
 
         #endregion
 
@@ -46,8 +48,11 @@ namespace LoginWindow.Models
             if (user != null && LoginHelper.VerifyPassword(Password, user.PasswordHash))
             {
 
-                CustomMessageBox.Show("登录成功");
-
+                //CustomMessageBox.Show("登录成功");
+                var homeWindow = _homeWindowFactory();
+                homeWindow.DataContext = new HomeWindowModel(_dbContext);
+                homeWindow.Show();
+                LoginSuccess?.Invoke();
             }
             else
             {

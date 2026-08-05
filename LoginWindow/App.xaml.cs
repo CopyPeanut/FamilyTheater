@@ -39,6 +39,11 @@ namespace LoginWindow
                     services.AddTransient<Login>();
                     services.AddTransient<RegisterWindow>();
                     services.AddTransient<RegisterWindowModel>();
+                    services.AddTransient<HomeWindow>();
+                    services.AddTransient<HomeWindowModel>();
+
+
+                    services.AddSingleton<Func<HomeWindow>>(provider => () => provider.GetRequiredService<HomeWindow>());
                 })
                 .Build();
 
@@ -61,6 +66,10 @@ namespace LoginWindow
             }
             var loginViewModel = AppHost.Services.GetRequiredService<LoginModel>();
             var loginView = AppHost.Services.GetRequiredService<Login>();
+            loginViewModel.LoginSuccess += () =>
+            {
+                loginView.Close(); // 在这里关闭窗口
+            };
             loginView.DataContext = loginViewModel;
             loginView.ViewModel = loginViewModel;
             loginView.Show();

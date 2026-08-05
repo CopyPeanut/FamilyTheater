@@ -16,7 +16,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <local:StarfieldBackground StarCount="70" />
+        <local:StarfieldBackground />
         <!-- 消息内容（支持换行） -->
         <TextBlock Grid.Row="0" Text="{Binding Message}" TextWrapping="Wrap" Foreground="#FFFFFF" x:Name="WindowMessage"
                    FontSize="28" LineHeight="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
