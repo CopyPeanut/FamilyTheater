@@ -52,7 +52,7 @@
             <Button Content="登入" Style="{StaticResource ButtonWarning}" Margin="240,0,0,0" Grid.Column="1" Grid.Row="2" HorizontalAlignment="Center"
                     Width="80" Height="40" FontSize="20" Command="{Binding LoginCmd}"/>
             <TextBlock  VerticalAlignment="Top" HorizontalAlignment="Center" Margin="214,0,0,0" Grid.Column="1" Grid.Row="3">
-                    <Hyperlink Click="OpenRegisterWindow_Click" TextDecorations="None" Foreground="#DCDCDC">
+                    <Hyperlink TextDecorations="None" Foreground="#DCDCDC" Command="{Binding RegisterCmd}">
                         没有账号？立即注册
                     </Hyperlink>
             </TextBlock>

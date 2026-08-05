@@ -12,11 +12,11 @@ namespace FamilyTheater.Core.Services
         {
             // 统一注册 DbContext
             services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlite($"Data Source={dbPath};Cache=Shared"),
-                ServiceLifetime.Transient);
+                    options.UseSqlite($"Data Source={dbPath};Cache=Shared"),
+                    ServiceLifetime.Scoped);
 
-            // 统一注册所有 Core 服务
-            services.AddSingleton<IUserService, UserService>();
+            // UserService 改为 Scoped
+            services.AddScoped<IUserService, UserService>();
 
             return services;
         }

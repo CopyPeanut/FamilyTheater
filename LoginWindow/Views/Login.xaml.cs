@@ -40,14 +40,5 @@ namespace LoginWindow.Views
                     .DisposeWith(disposables);
             });
         }
-
-        private void OpenRegisterWindow_Click(object sender, RoutedEventArgs e)
-        {
-            var registerWindow = new RegisterWindow();
-            registerWindow.Owner = this;
-            RegisterWindowModel model = new(ViewModel._dbContext);
-            registerWindow.DataContext = model;
-            registerWindow.ShowDialog();
-        }
     }
 }

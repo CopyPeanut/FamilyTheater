@@ -1,6 +1,7 @@
 ﻿using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Enum;
 using FamilyTheater.Core.Helper;
+using FamilyTheater.Core.Services;
 using HandyControl.Controls;      // MessageBox、Growl 等控件
 using HandyControl.Data;
 using LoginWindow.Views;
@@ -14,10 +15,10 @@ namespace LoginWindow.Models
 {
     public class RegisterWindowModel : ReactiveObject
     {
-        private readonly AppDbContext _dbContext;
-        public RegisterWindowModel(AppDbContext dbContext)
+        IUserService _userService;
+        public RegisterWindowModel(IUserService userService)
         {
-            _dbContext = dbContext;
+            _userService = userService;
             RegisterCommand = ReactiveCommand.Create(OnRegister);
         }
 
@@ -50,6 +51,7 @@ namespace LoginWindow.Models
                 {
                     CustomMessageBox.Show("密码不一致，请检查",LogLevel.WARN);
                     Password = ConfirmPassword = "";
+                    return;
                 }
 
                 if (Password.Length < 6)
@@ -59,11 +61,7 @@ namespace LoginWindow.Models
                     return;
                 }
 
-                // 2️⃣ 检查用户名是否已存在
-                var exists = await _dbContext.Users
-                    .AnyAsync(u => u.Username == UserName.Trim());
-
-                if (exists)
+                if (await _userService.IsUserExistsAsync(UserName.Trim()))
                 {
                     CustomMessageBox.Show("该用户名已被注册", LogLevel.WARN);
                     return;
@@ -75,9 +73,8 @@ namespace LoginWindow.Models
                     PasswordHash = LoginHelper.HashPassword(Password)
                 };
 
-                _dbContext.Users.Add(user);
-                await _dbContext.SaveChangesAsync();
-                CustomMessageBox.Show("注册成功！");
+                var success = await _userService.RegisterAsync(UserName.Trim(), Password);
+                CustomMessageBox.Show(success ? "注册成功！" : "注册失败，请重试");
             }
             finally
             {

@@ -1,6 +1,7 @@
 ﻿using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Enum;
 using FamilyTheater.Core.Helper;
+using FamilyTheater.Core.Services;
 using LoginWindow.Views;
 using Microsoft.EntityFrameworkCore;
 using ReactiveUI;
@@ -12,13 +13,16 @@ namespace LoginWindow.Models
 
     public class LoginModel : ReactiveObject
     {
-        public readonly AppDbContext _dbContext;
+        IUserService _userService;
         private readonly Func<HomeWindow> _homeWindowFactory;
-        public LoginModel(AppDbContext dbContext, Func<HomeWindow> homeWindowFactory)
+        private readonly Func<RegisterWindow> _registerWindowFactory;
+        public LoginModel(IUserService userService, Func<HomeWindow> homeWindowFactory, Func<RegisterWindow> registerWindowFactory)
         {
-            _dbContext = dbContext;
-            LoginCmd = ReactiveCommand.Create(OnLogin);
+            _userService = userService;
             _homeWindowFactory = homeWindowFactory;
+            _registerWindowFactory = registerWindowFactory;
+            LoginCmd = ReactiveCommand.Create(OnLogin);
+            RegisterCmd = ReactiveCommand.Create(OnRegister);
         }
 
         #region 属性
@@ -39,26 +43,25 @@ namespace LoginWindow.Models
                 CustomMessageBox.Show("用户名或密码不能为空",LogLevel.ERROR);
                 return;
             }
-            var user = await _dbContext.Users
-                .AsNoTracking()
-                .Where(u => u.Username == UserName)
-                .Select(u => new { u.Id, u.PasswordHash })
-                .FirstOrDefaultAsync();
-
-            if (user != null && LoginHelper.VerifyPassword(Password, user.PasswordHash))
+            var ok = await _userService.ValidateCredentialsAsync(UserName, Password);
+            if (ok)
             {
-
-                //CustomMessageBox.Show("登录成功");
                 var homeWindow = _homeWindowFactory();
-                homeWindow.DataContext = new HomeWindowModel(_dbContext);
                 homeWindow.Show();
                 LoginSuccess?.Invoke();
             }
             else
             {
-                CustomMessageBox.Show("密码或用户名错误！",LogLevel.ERROR);
+                CustomMessageBox.Show("密码或用户名错误！", LogLevel.ERROR);
             }
-            #endregion
         }
+        public ReactiveCommand<Unit, Unit> RegisterCmd { get; }
+
+        private void OnRegister()
+        {
+            var registerWindow = _registerWindowFactory();
+            registerWindow.Show();
+        }
+        #endregion
     }
 }

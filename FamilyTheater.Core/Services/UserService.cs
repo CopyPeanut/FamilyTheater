@@ -1,27 +1,51 @@
-﻿// Services/UserService.cs
-using FamilyTheater.Core.Data;
-using Microsoft.Extensions.DependencyInjection;
+﻿using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Helper;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
 namespace FamilyTheater.Core.Services;
 
 public class UserService : IUserService
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly AppDbContext _db;
 
-    public UserService(IServiceProvider serviceProvider)
+    public UserService(AppDbContext db)
     {
-        _serviceProvider = serviceProvider;
+        _db = db;
     }
 
     public async Task<bool> ValidateCredentialsAsync(string userName, string password)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(password))
+            return false;
 
-        var user = await Task.Run(() =>
-            db.Users.FirstOrDefault(u => u.Username == userName));
+        var user = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Username == userName)
+            .Select(u => new { u.PasswordHash })
+            .FirstOrDefaultAsync();
 
         return user != null && LoginHelper.VerifyPassword(password, user.PasswordHash);
+    }
+
+    public async Task<bool> RegisterAsync(string userName, string password)
+    {
+        if (await IsUserExistsAsync(userName))
+            return false;
+
+        _db.Users.Add(new User
+        {
+            Username = userName,
+            PasswordHash = LoginHelper.HashPassword(password)
+        });
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> IsUserExistsAsync(string userName)
+    {
+        return await _db.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Username == userName);
     }
 }

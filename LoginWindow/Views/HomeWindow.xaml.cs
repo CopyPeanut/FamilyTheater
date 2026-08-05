@@ -31,23 +31,15 @@ namespace LoginWindow.Views
         object? IViewFor.ViewModel { get => ViewModel; set => throw new NotImplementedException(); }
 
 
-        public HomeWindow()
+        public HomeWindow(HomeWindowModel viewModel)
         {
             InitializeComponent();
+            this.DataContext = viewModel;
             this.WhenActivated(disposables =>
             {
                 this.OneWayBind(ViewModel, vm => vm, v => v.DataContext)
                     .DisposeWith(disposables);
             });
-        }
-
-        private void OpenRegisterWindow_Click(object sender, RoutedEventArgs e)
-        {
-            var registerWindow = new HomeWindow();
-            registerWindow.Owner = this;
-            HomeWindowModel model = new(ViewModel._dbContext);
-            registerWindow.DataContext = model;
-            registerWindow.ShowDialog();
         }
     }
 }

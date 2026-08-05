@@ -1,4 +1,5 @@
 ﻿using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Services;
 using LoginWindow.Views;
 using ReactiveUI;
 using System;
@@ -11,11 +12,10 @@ namespace LoginWindow.Models
 {
     public class HomeWindowModel : ReactiveObject
     {
-        public readonly AppDbContext _dbContext;
-        public HomeWindowModel(AppDbContext dbContext)
+        IUserService _userService;
+        public HomeWindowModel(IUserService userService)
         {
-            _dbContext = dbContext;
-            
+            _userService = userService;
         }
 
     }

@@ -44,6 +44,7 @@ namespace LoginWindow
 
 
                     services.AddSingleton<Func<HomeWindow>>(provider => () => provider.GetRequiredService<HomeWindow>());
+                    services.AddSingleton<Func<RegisterWindow>>(provider => () => provider.GetRequiredService<RegisterWindow>());
                 })
                 .Build();
 
