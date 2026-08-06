@@ -18,6 +18,11 @@ public interface IMovieService
     /// 获取全部电影（含标签），用于首页海报展示。
     /// </summary>
     Task<List<Movie>> GetAllMoviesAsync();
+
+    /// <summary>
+    /// 获取全部标签，用于首页标签筛选。
+    /// </summary>
+    Task<List<Tag>> GetAllTagsAsync();
 }
 
 /// <summary>

@@ -5,6 +5,7 @@ using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -12,6 +13,21 @@ using System.Threading.Tasks;
 
 namespace LoginWindow.Models
 {
+    /// <summary>
+    /// 标签 UI 包装：Name 显示名称，IsSelected 选中状态。
+    /// </summary>
+    public class TagViewModel : ReactiveObject
+    {
+        public string Name { get; }
+
+        [Reactive] public bool IsSelected { get; set; }
+
+        public TagViewModel(string name)
+        {
+            Name = name;
+        }
+    }
+
     public class HomeWindowModel : ReactiveObject
     {
         private readonly IUserService _userService;
@@ -21,17 +37,21 @@ namespace LoginWindow.Models
         /// <summary>每页显示的电影数量</summary>
         private const int PageSize = 24;
 
+        /// <summary>全部电影（从数据库加载，作为筛选源）</summary>
+        private List<Movie> _allMovies = new();
+
         [Reactive] public int CurrentPage { get; set; } = 1;
         [Reactive] public int TotalPages { get; set; } = 1;
         [Reactive] public string JumpPageText { get; set; } = string.Empty;
+        [Reactive] public string SearchText { get; set; } = string.Empty;
 
-        /// <summary>全部电影（从数据库加载）</summary>
-        public ObservableCollection<Movie> AllMovies { get; } = new();
-
-        /// <summary>当前页显示的电影（分页后的子集）</summary>
+        /// <summary>当前页显示的电影（筛选+分页后的子集）</summary>
         public ObservableCollection<Movie> CurrentPageMovies { get; } = new();
 
-        // 改为 int?，null 表示预留空位
+        /// <summary>全部标签（用于渲染标签方块）</summary>
+        public ObservableCollection<TagViewModel> Tags { get; } = new();
+
+        // 页码槽位，null 表示空位
         public ObservableCollection<int?> PageNumbers { get; } = new();
 
         public ReactiveCommand<Unit, int> FirstPageCmd { get; }
@@ -41,6 +61,7 @@ namespace LoginWindow.Models
         public ReactiveCommand<int, Unit> GoToPageCmd { get; }
         public ReactiveCommand<Unit, Unit> JumpPageCmd { get; }
         public ReactiveCommand<Unit, Unit> OpenConfigCmd { get; }
+        public ReactiveCommand<string, Unit> ToggleTagCmd { get; }
 
         public HomeWindowModel(IUserService userService, IMovieService movieService, Func<ConfigWindow> configWindowFactory)
         {
@@ -69,9 +90,29 @@ namespace LoginWindow.Models
             {
                 var window = _configWindowFactory();
                 window.ShowDialog();
-                // Config 关闭后重新加载数据库中的电影（扫描入库后刷新海报列表）
                 _ = LoadMoviesAsync();
             });
+
+            // 标签点击：切换选中状态后重新筛选
+            ToggleTagCmd = ReactiveCommand.Create<string>(tagName =>
+            {
+                var tag = Tags.FirstOrDefault(t => t.Name == tagName);
+                if (tag != null)
+                {
+                    tag.IsSelected = !tag.IsSelected;
+                    CurrentPage = 1;
+                    ApplyFilter();
+                }
+            });
+
+            // 搜索文本变化时重新筛选（防抖 300ms）
+            this.WhenAnyValue(x => x.SearchText)
+                .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
+                .Subscribe(_ =>
+                {
+                    CurrentPage = 1;
+                    ApplyFilter();
+                });
 
             // CurrentPage 或 TotalPages 变化时刷新页码和当前页电影列表
             this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
@@ -83,28 +124,76 @@ namespace LoginWindow.Models
         }
 
         /// <summary>
-        /// 从数据库加载全部电影，计算总页数，填充首页。
+        /// 从数据库加载全部电影和标签，填充首页。
         /// </summary>
         public async Task LoadMoviesAsync()
         {
+            // 加载电影
             var movies = await _movieService.GetAllMoviesAsync();
-            AllMovies.Clear();
-            foreach (var m in movies)
-                AllMovies.Add(m);
+            _allMovies = movies ?? new List<Movie>();
 
-            TotalPages = Math.Max(1, (int)Math.Ceiling(AllMovies.Count / (double)PageSize));
+            // 加载标签并渲染为方块
+            var tags = await _movieService.GetAllTagsAsync();
+            Tags.Clear();
+            foreach (var t in tags)
+                Tags.Add(new TagViewModel(t.Name));
+
+            // 重置筛选并刷新
+            SearchText = string.Empty;
             CurrentPage = 1;
+            ApplyFilter();
+        }
 
-            // 手动刷新，不依赖 CurrentPage 变更通知（CurrentPage 可能本来就是 1，不会触发 Subscribe）
+        /// <summary>
+        /// 按 SearchText + 选中的 Tags 筛选 _allMovies，重算 TotalPages 并刷新当前页。
+        /// </summary>
+        private void ApplyFilter()
+        {
+            IEnumerable<Movie> filtered = _allMovies;
+
+            // 标签筛选：选中的标签取并集（电影包含任意一个选中标签即匹配）
+            var selectedTagNames = Tags
+                .Where(t => t.IsSelected)
+                .Select(t => t.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (selectedTagNames.Count > 0)
+            {
+                filtered = filtered.Where(m =>
+                    m.MovieTags != null &&
+                    m.MovieTags.Any(mt =>
+                        mt.Tag != null &&
+                        selectedTagNames.Contains(mt.Tag.Name)));
+            }
+
+            // 搜索筛选：标题包含搜索文本（忽略大小写）
+            var search = (SearchText ?? string.Empty).Trim();
+            if (!string.IsNullOrEmpty(search))
+            {
+                filtered = filtered.Where(m =>
+                    m.Title != null &&
+                    m.Title.Contains(search, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var filteredList = filtered.ToList();
+
+            TotalPages = Math.Max(1, (int)Math.Ceiling(filteredList.Count / (double)PageSize));
+            CurrentPage = Math.Min(CurrentPage, TotalPages);
+
+            // 存储筛选结果供分页使用
+            _filteredMovies = filteredList;
+
             RefreshPageNumbers();
             RefreshCurrentPageMovies();
         }
+
+        private List<Movie> _filteredMovies = new();
 
         private void RefreshCurrentPageMovies()
         {
             CurrentPageMovies.Clear();
             var skip = (CurrentPage - 1) * PageSize;
-            foreach (var movie in AllMovies.Skip(skip).Take(PageSize))
+            foreach (var movie in _filteredMovies.Skip(skip).Take(PageSize))
                 CurrentPageMovies.Add(movie);
         }
 
@@ -112,7 +201,6 @@ namespace LoginWindow.Models
         {
             PageNumbers.Clear();
 
-            // 固定 7 个槽位：当前页 ±3
             for (int offset = -3; offset <= 3; offset++)
             {
                 int page = CurrentPage + offset;

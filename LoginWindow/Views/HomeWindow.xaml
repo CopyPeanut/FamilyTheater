@@ -68,13 +68,13 @@
                     <Grid.RowDefinitions>
                         <!-- 搜索栏 -->
                         <RowDefinition Height="Auto"/>
-                        <!-- 其他筛选内容 -->
+                        <!-- 标签筛选 -->
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
                     <!-- 1. 搜索栏 -->
                     <TextBox Grid.Row="0" Height="35" Margin="0,0,0,15" Background="#333333" Foreground="White" BorderBrush="#555555" 
-                             BorderThickness="1" Padding="10,0" VerticalContentAlignment="Center" Text="{Binding SearchText}">
+                             BorderThickness="1" Padding="10,0" VerticalContentAlignment="Center" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
                         <TextBox.Style>
                             <Style TargetType="TextBox">
                                 <Style.Triggers>
@@ -104,11 +104,54 @@
                         </TextBox.Template>
                     </TextBox>
 
-                    <!-- 2. 其他筛选控件区域 (示例) -->
-                    <StackPanel Grid.Row="1" Orientation="Horizontal">
-                        <!-- 你可以在这里添加 CheckBox, ComboBox 等其他筛选控件 -->
-                        <TextBlock Text="这里是其他筛选控件的位置" Foreground="Gray" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <!-- 2. 标签筛选区 -->
+                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Tags}" Margin="10,5,10,5">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Name}"
+                    Command="{Binding DataContext.ToggleTagCmd, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding Name}"
+                    Margin="0,0,8,8" Padding="12,4" FontSize="13"
+                    Cursor="Hand" BorderThickness="0">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#333333"/>
+                                            <Setter Property="Foreground" Value="#AAAAAA"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <!-- 核心：重写控件模板，使用 Border 实现圆角 -->
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="border" 
+                                            Background="{TemplateBinding Background}" 
+                                            CornerRadius="5" 
+                                            Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <!-- 选中状态：白底黑字 -->
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="White"/>
+                                                    <Setter Property="Foreground" Value="Black"/>
+                                                </DataTrigger>
+                                                <!-- 可选：增加鼠标悬停时的透明度变化，提升交互体验 -->
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Opacity" Value="0.8"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
                 </Grid>
             </Border>
@@ -174,7 +217,7 @@
             <Border Grid.Row="3" Background="#f1b054" CornerRadius="10,10,0,0" Padding="15,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
 
-                    <!-- 页码小方块（当前页±5） -->
+                    <!-- 页码小方块（当前页±3） -->
                     <ItemsControl ItemsSource="{Binding PageNumbers}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

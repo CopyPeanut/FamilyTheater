@@ -124,6 +124,14 @@ public class MovieService : IMovieService
             .ToListAsync();
     }
 
+    public async Task<List<Tag>> GetAllTagsAsync()
+    {
+        return await _db.Tags
+            .OrderBy(t => t.Name)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
     // ────────────────────────── 私有方法 ──────────────────────────
 
     /// <summary>

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Windows;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 
@@ -9,8 +8,8 @@ namespace LoginWindow.Views
     public partial class PlayerWindow : Window
     {
         private readonly string _videoPath;
-        private bool _isDragging;
         private bool _isPlaying;
+        private bool _wasPlayingBeforeDrag;  // 按下进度条时视频是否在播放，松手后据此恢复
         private readonly DispatcherTimer _progressTimer;
 
         public PlayerWindow(string videoPath)
@@ -18,10 +17,13 @@ namespace LoginWindow.Views
             InitializeComponent();
             _videoPath = videoPath;
 
-            _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(0.5) };
+            _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
             _progressTimer.Tick += ProgressTimer_Tick;
 
-            // 窗口 Loaded 后再设置 Source，确保 MediaElement 已完成布局
+            // JumpSlider 拖拽开始时暂停视频，完成时跳转并恢复
+            ProgressSlider.DragStarted += ProgressSlider_DragStarted;
+            ProgressSlider.DragCompleted += ProgressSlider_DragCompleted;
+
             this.Loaded += PlayerWindow_Loaded;
         }
 
@@ -30,7 +32,6 @@ namespace LoginWindow.Views
             if (!string.IsNullOrEmpty(_videoPath))
             {
                 Player.Source = new Uri(_videoPath, UriKind.Absolute);
-                // 主动调用 Play 触发加载
                 Player.Play();
             }
         }
@@ -47,7 +48,6 @@ namespace LoginWindow.Views
 
         private void Player_MediaFailed(object sender, ExceptionRoutedEventArgs e)
         {
-            // 播放失败时显示错误信息
             var errorMsg = e.ErrorException?.Message ?? "未知错误";
             CustomMessageBox.Show($"无法播放该视频：{errorMsg}\n\n路径：{_videoPath}\n\n可能原因：\n1. 视频编码不被 Windows Media Player 支持（如 H.265/HEVC）\n2. 文件损坏或路径含特殊字符\n3. 系统缺少对应解码器");
             Close();
@@ -79,17 +79,34 @@ namespace LoginWindow.Views
             }
         }
 
-        private void ProgressSlider_DragStarted(object sender, DragStartedEventArgs e)
+        /// <summary>
+        /// 按下进度条 → 暂停视频，记录之前是否在播放。
+        /// </summary>
+        private void ProgressSlider_DragStarted(object? sender, EventArgs e)
         {
-            _isDragging = true;
+            _wasPlayingBeforeDrag = _isPlaying;
+            if (_isPlaying)
+            {
+                Player.Pause();
+                _isPlaying = false;
+                PlayPauseIcon.Text = "▶";
+            }
+            _progressTimer.Stop();
         }
 
-        private void ProgressSlider_DragCompleted(object sender, DragCompletedEventArgs e)
+        /// <summary>
+        /// 松手 → 跳转播放位置，如果之前在播放则恢复。
+        /// </summary>
+        private void ProgressSlider_DragCompleted(object? sender, EventArgs e)
         {
-            _isDragging = false;
             Player.Position = TimeSpan.FromSeconds(ProgressSlider.Value);
-            if (_isPlaying)
+            if (_wasPlayingBeforeDrag)
+            {
+                Player.Play();
+                _isPlaying = true;
+                PlayPauseIcon.Text = "⏸";
                 _progressTimer.Start();
+            }
         }
 
         private void ProgressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -99,7 +116,8 @@ namespace LoginWindow.Views
 
         private void ProgressTimer_Tick(object sender, EventArgs e)
         {
-            if (!_isDragging && Player.NaturalDuration.HasTimeSpan)
+            // 拖拽期间不更新 Slider，避免互相拉扯抽搐
+            if (!ProgressSlider.IsDragging && Player.NaturalDuration.HasTimeSpan)
             {
                 ProgressSlider.Value = Player.Position.TotalSeconds;
                 UpdateTimeDisplay();
