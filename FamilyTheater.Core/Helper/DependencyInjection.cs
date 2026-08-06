@@ -18,6 +18,7 @@ namespace FamilyTheater.Core.Services
             // UserService 改为 Scoped
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<ISettingService, SettingService>();
+            services.AddScoped<IMovieService, MovieService>();
 
             return services;
         }

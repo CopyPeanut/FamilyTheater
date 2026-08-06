@@ -113,6 +113,63 @@
                 </Grid>
             </Border>
 
+            <!-- 电影海报展示区 (Grid.Row=2) -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0">
+                <ItemsControl ItemsSource="{Binding CurrentPageMovies}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="180" Height="280" Margin="8" Background="#2A2A28"
+                                    CornerRadius="8" ClipToBounds="True"
+                                    MouseLeftButtonDown="MovieCard_Click">
+                                <StackPanel>
+                                    <!-- 海报图片（PosterPath 非空时显示） -->
+                                    <Image Source="{Binding PosterPath}"
+                                           Width="180" Height="240" Stretch="UniformToFill"
+                                           HorizontalAlignment="Center">
+                                        <Image.Style>
+                                            <Style TargetType="Image">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding PosterPath}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Image.Style>
+                                    </Image>
+
+                                    <!-- 海报占位（PosterPath 为 null 时显示） -->
+                                    <Grid Width="180" Height="240" Background="#3A3A38">
+                                        <Grid.Style>
+                                            <Style TargetType="Grid">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding PosterPath}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
+                                        <TextBlock Text="🎬" FontSize="48" Foreground="#666666"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- 标题 -->
+                                    <TextBlock Text="{Binding Title}" Foreground="#E0E0E0" FontSize="13"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Margin="5,8,5,5" TextTrimming="CharacterEllipsis"
+                                               TextWrapping="NoWrap" MaxWidth="170"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
             <!-- 分页控件区域 -->
             <Border Grid.Row="3" Background="#f1b054" CornerRadius="10,10,0,0" Padding="15,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">

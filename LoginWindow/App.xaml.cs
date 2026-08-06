@@ -19,7 +19,7 @@ namespace LoginWindow
         public static IHost AppHost { get; private set; } = null!;
         public App()
         {
-         
+           
         }
         protected override async void OnStartup(StartupEventArgs e)
         {
@@ -56,7 +56,16 @@ namespace LoginWindow
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 await Task.Run(() =>
                 {
+                    // 确保数据库文件存在
                     db.Database.EnsureCreated();
+
+                    var script = db.Database.GenerateCreateScript();
+                    var idempotentScript = script
+                        .Replace("CREATE UNIQUE INDEX \"", "CREATE UNIQUE INDEX IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase)
+                        .Replace("CREATE INDEX \"", "CREATE INDEX IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase)
+                        .Replace("CREATE TABLE \"", "CREATE TABLE IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase);
+                    db.Database.ExecuteSqlRaw(idempotentScript);
+
                     if (!db.Users.Any())
                     {
                         db.Users.Add(new User
