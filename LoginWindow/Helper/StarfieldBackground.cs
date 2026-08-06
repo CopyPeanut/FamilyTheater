@@ -27,7 +27,7 @@ namespace LoginWindow.Views
         {
             IsHitTestVisible = false; // 关键：不拦截鼠标事件
             ClipToBounds = true;
-            Background = Brushes.Transparent; // 透明底，由父容器提供黑色背景
+            Background = System.Windows.Media.Brushes.Transparent; // 透明底，由父容器提供黑色背景
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
         }
@@ -126,10 +126,10 @@ namespace LoginWindow.Views
             double size = _random.NextDouble() * (MaxSize - MinSize) + MinSize;
 
             // 偶尔生成暖色/冷色星星，增加层次感
-            Brush fill = Brushes.White;
+            System.Windows.Media.Brush fill = System.Windows.Media.Brushes.White;
             double colorRoll = _random.NextDouble();
-            if (colorRoll > 0.85) fill = new SolidColorBrush(Color.FromRgb(255, 238, 221)); // 暖黄
-            else if (colorRoll > 0.70) fill = new SolidColorBrush(Color.FromRgb(221, 238, 255)); // 冷蓝
+            if (colorRoll > 0.85) fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 238, 221)); // 暖黄
+            else if (colorRoll > 0.70) fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(221, 238, 255)); // 冷蓝
 
             return new Ellipse
             {

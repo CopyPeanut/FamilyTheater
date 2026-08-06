@@ -1,4 +1,5 @@
 ﻿using FamilyTheater.Core.Services;
+using LoginWindow.Views;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System;
@@ -11,7 +12,7 @@ namespace LoginWindow.Models
     public class HomeWindowModel : ReactiveObject
     {
         private readonly IUserService _userService;
-
+        private readonly Func<ConfigWindow> _configWindowFactory;
         [Reactive] public int CurrentPage { get; set; } = 1;
         [Reactive] public int TotalPages { get; set; } = 20; // TODO: 接真实数据时改
         [Reactive] public string JumpPageText { get; set; }
@@ -25,10 +26,12 @@ namespace LoginWindow.Models
         public ReactiveCommand<Unit, int> LastPageCmd { get; }
         public ReactiveCommand<int, Unit> GoToPageCmd { get; }
         public ReactiveCommand<Unit, Unit> JumpPageCmd { get; }
+        public ReactiveCommand<Unit, Unit> OpenConfigCmd { get; }
 
-        public HomeWindowModel(IUserService userService)
+        public HomeWindowModel(IUserService userService, Func<ConfigWindow> configWindowFactory)
         {
             _userService = userService;
+            _configWindowFactory = configWindowFactory;
 
             var canMoveBack = this.WhenAnyValue(x => x.CurrentPage, p => p > 1);
             var canMoveForward = this.WhenAnyValue(x => x.CurrentPage, p => p < TotalPages);
@@ -47,7 +50,11 @@ namespace LoginWindow.Models
                     CurrentPage = page;
                 JumpPageText = string.Empty;
             });
-
+            OpenConfigCmd = ReactiveCommand.Create(() =>
+            {
+                var window = _configWindowFactory();
+                window.ShowDialog();
+            });
             this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
                 .Subscribe(_ => RefreshPageNumbers());
         }

@@ -30,9 +30,9 @@ namespace LoginWindow.Views
             };
             WindowMessage.Foreground = level switch
             {
-                LogLevel.WARN => Brushes.Yellow,
-                LogLevel.ERROR or LogLevel.FATAL => Brushes.Red,
-                _ => Brushes.White
+                LogLevel.WARN => System.Windows.Media.Brushes.Yellow,
+                LogLevel.ERROR or LogLevel.FATAL => System.Windows.Media.Brushes.Red,
+                _ => System.Windows.Media.Brushes.White
             };
 
             DataContext = new { Message = message };

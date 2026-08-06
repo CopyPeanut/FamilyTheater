@@ -38,7 +38,7 @@
                     <StackPanel  Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
 
                         <!-- 1. 设置按钮 -->
-                        <Button Command="{Binding}" Background="Transparent" BorderThickness="0" ToolTip="设置" Margin="0,5,5,0" Height="37">
+                        <Button Command="{Binding OpenConfigCmd}" Background="Transparent" BorderThickness="0" ToolTip="设置" Margin="0,5,5,0" Height="37">
                             <Image Source="/Resource/cog-fill-w.png" Width="30" Height="25" />
                         </Button>
 
@@ -127,11 +127,9 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid Width="32" Height="32" Margin="4,0">
-                                    <Button Content="{Binding}"
-        Visibility="{Binding Converter={StaticResource NullToVisibilityConverter}}"
-                Command="{Binding DataContext.GoToPageCmd, RelativeSource={RelativeSource AncestorType=Window}}"
-                CommandParameter="{Binding}"
-                FontSize="14" Cursor="Hand" BorderThickness="0">
+                                    <Button Content="{Binding}" Visibility="{Binding Converter={StaticResource NullToVisibilityConverter}}"
+                                            Command="{Binding DataContext.GoToPageCmd, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}" FontSize="14" Cursor="Hand" BorderThickness="0">
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="Background" Value="Black"/>
@@ -142,7 +140,7 @@
                                                             <MultiBinding Converter="{StaticResource PageMatchConverter}">
                                                                 <Binding/>
                                                                 <Binding RelativeSource="{RelativeSource AncestorType=Window}"
-                                             Path="DataContext.CurrentPage"/>
+                                                                         Path="DataContext.CurrentPage"/>
                                                             </MultiBinding>
                                                         </DataTrigger.Binding>
                                                         <Setter Property="Background" Value="White"/>
@@ -160,8 +158,8 @@
                     <!-- 跳转输入框（跟在方块后面） -->
                     <TextBlock Text="跳转" Foreground="Black" VerticalAlignment="Center" Margin="20,0,5,0" FontSize="14"/>
                     <TextBox Text="{Binding JumpPageText, UpdateSourceTrigger=PropertyChanged}"
-                 Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                 FontSize="14" Background="Black" Foreground="White" BorderBrush="#555555" BorderThickness="1" Padding="0">
+                             Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                             FontSize="14" Background="Black" Foreground="White" BorderBrush="#555555" BorderThickness="1" Padding="0">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding JumpPageCmd}"/>
                         </TextBox.InputBindings>

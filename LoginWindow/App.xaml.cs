@@ -14,7 +14,7 @@ namespace LoginWindow
     /// <summary>
     /// Interaction logic for App.xaml
     /// </summary>
-    public partial class App : Application
+    public partial class App : System.Windows.Application
     {
         public static IHost AppHost { get; private set; } = null!;
         public App()
@@ -41,10 +41,13 @@ namespace LoginWindow
                     services.AddTransient<RegisterWindowModel>();
                     services.AddTransient<HomeWindow>();
                     services.AddTransient<HomeWindowModel>();
-
+                    services.AddTransient<ConfigWindow>();
+                    services.AddTransient<ConfigWindowModel>();
 
                     services.AddSingleton<Func<HomeWindow>>(provider => () => provider.GetRequiredService<HomeWindow>());
                     services.AddSingleton<Func<RegisterWindow>>(provider => () => provider.GetRequiredService<RegisterWindow>());
+                    services.AddSingleton<Func<ConfigWindow>>(provider => () => provider.GetRequiredService<ConfigWindow>());
+
                 })
                 .Build();
 
