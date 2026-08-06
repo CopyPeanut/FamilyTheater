@@ -23,6 +23,27 @@ public interface IMovieService
     /// 获取全部标签，用于首页标签筛选。
     /// </summary>
     Task<List<Tag>> GetAllTagsAsync();
+
+    /// <summary>
+    /// 给电影添加标签（已存在则忽略），如果 Tag 表里没有该名称则先创建。
+    /// </summary>
+    Task AddTagToMovieAsync(int movieId, string tagName);
+
+    /// <summary>
+    /// 从电影移除指定标签关联（不删除 Tag 记录本身）。
+    /// </summary>
+    Task RemoveTagFromMovieAsync(int movieId, string tagName);
+
+    /// <summary>
+    /// 获取单个电影（含标签），用于详情弹窗。
+    /// </summary>
+    Task<Movie?> GetMovieByIdAsync(int movieId);
+
+    /// <summary>
+    /// 重命名电影：改标题 + 改文件夹名 + 更新 FolderPath/VideoFilePath/PosterPath + 写库。
+    /// 返回更新后的 Movie（路径已更新），失败返回 null。
+    /// </summary>
+    Task<Movie?> RenameMovieAsync(int movieId, string newTitle);
 }
 
 /// <summary>

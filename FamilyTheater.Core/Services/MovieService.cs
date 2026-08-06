@@ -132,6 +132,118 @@ public class MovieService : IMovieService
             .ToListAsync();
     }
 
+    public async Task<Movie?> GetMovieByIdAsync(int movieId)
+    {
+        return await _db.Movies
+            .Include(m => m.MovieTags)
+                .ThenInclude(mt => mt.Tag)
+            .FirstOrDefaultAsync(m => m.Id == movieId);
+    }
+    public async Task<Movie?> RenameMovieAsync(int movieId, string newTitle)
+    {
+        var title = newTitle.Trim();
+        if (string.IsNullOrEmpty(title))
+            return null;
+
+        var movie = await _db.Movies
+            .Include(m => m.MovieTags)
+                .ThenInclude(mt => mt.Tag)
+            .FirstOrDefaultAsync(m => m.Id == movieId);
+        if (movie == null)
+            return null;
+
+        // 标题没变，直接返回
+        if (movie.Title.Equals(title, StringComparison.OrdinalIgnoreCase))
+            return movie;
+
+        var oldFolderPath = movie.FolderPath;
+        var parentDir = Path.GetDirectoryName(oldFolderPath);
+        if (string.IsNullOrEmpty(parentDir))
+            return null;
+
+        var newFolderPath = Path.Combine(parentDir, title);
+
+        // 目标文件夹已存在且不是自己 → 拒绝
+        if (Directory.Exists(newFolderPath) &&
+            !string.Equals(newFolderPath, oldFolderPath, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        // 重命名物理文件夹
+        Directory.Move(oldFolderPath, newFolderPath);
+
+        // 更新所有路径
+        movie.Title = title;
+        movie.FolderPath = newFolderPath;
+
+        // 更新视频文件路径
+        if (!string.IsNullOrEmpty(movie.VideoFilePath) &&
+            movie.VideoFilePath.StartsWith(oldFolderPath, StringComparison.OrdinalIgnoreCase))
+        {
+            movie.VideoFilePath = Path.Combine(newFolderPath,
+                movie.VideoFilePath.Substring(oldFolderPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        // 更新海报路径
+        if (!string.IsNullOrEmpty(movie.PosterPath) &&
+            movie.PosterPath.StartsWith(oldFolderPath, StringComparison.OrdinalIgnoreCase))
+        {
+            movie.PosterPath = Path.Combine(newFolderPath,
+                movie.PosterPath.Substring(oldFolderPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        movie.LastScannedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return movie;
+    }
+
+    public async Task AddTagToMovieAsync(int movieId, string tagName)
+    {
+        var name = tagName.Trim();
+        if (string.IsNullOrEmpty(name))
+            return;
+
+        var movie = await _db.Movies
+            .Include(m => m.MovieTags)
+                .ThenInclude(mt => mt.Tag)
+            .FirstOrDefaultAsync(m => m.Id == movieId);
+        if (movie == null)
+            return;
+
+        // 已有该标签则跳过
+        if (movie.MovieTags.Any(mt =>
+            mt.Tag.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        // 查找或创建 Tag
+        var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Name == name);
+        if (tag == null)
+        {
+            tag = new Tag { Name = name };
+            _db.Tags.Add(tag);
+        }
+
+        movie.MovieTags.Add(new MovieTag { Movie = movie, Tag = tag });
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task RemoveTagFromMovieAsync(int movieId, string tagName)
+    {
+        var name = tagName.Trim();
+        if (string.IsNullOrEmpty(name))
+            return;
+
+        var link = await _db.MovieTags
+            .Include(mt => mt.Tag)
+            .FirstOrDefaultAsync(mt =>
+                mt.MovieId == movieId &&
+                mt.Tag.Name == name);
+        if (link == null)
+            return;
+
+        _db.MovieTags.Remove(link);
+        await _db.SaveChangesAsync();
+    }
+
     // ────────────────────────── 私有方法 ──────────────────────────
 
     /// <summary>

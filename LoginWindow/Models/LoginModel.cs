@@ -40,12 +40,12 @@ namespace LoginWindow.Models
         {
             if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(Password))
             {
-                //CustomMessageBox.Show("用户名或密码不能为空",LogLevel.ERROR);
-                //return;
-                var homeWindow = _homeWindowFactory();
-                homeWindow.Show();
-                LoginSuccess?.Invoke();
+                CustomMessageBox.Show("用户名或密码不能为空", LogLevel.ERROR);
                 return;
+                //var homeWindow = _homeWindowFactory();
+                //homeWindow.Show();
+                //LoginSuccess?.Invoke();
+                //return;
             }
             var ok = await _userService.ValidateCredentialsAsync(UserName, Password);
             if (ok)

@@ -1,4 +1,4 @@
-﻿using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Services;
 using LoginWindow.Views;
 using ReactiveUI;
@@ -33,6 +33,9 @@ namespace LoginWindow.Models
         private readonly IUserService _userService;
         private readonly IMovieService _movieService;
         private readonly Func<ConfigWindow> _configWindowFactory;
+
+        /// <summary>暴露给 View 层，用于打开详情弹窗时传递</summary>
+        public IMovieService MovieService => _movieService;
 
         /// <summary>每页显示的电影数量</summary>
         private const int PageSize = 24;

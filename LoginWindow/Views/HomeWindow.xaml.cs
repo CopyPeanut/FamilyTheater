@@ -1,4 +1,5 @@
 ﻿using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Services;
 using System.Reactive.Disposables;
 using System.Windows;
 using System.Windows.Input;
@@ -39,18 +40,16 @@ namespace LoginWindow.Views
             this.DataContext = viewModel;
             ViewModel = viewModel;
 
-            // 窗口 Loaded 事件触发时加载电影数据（确保 DataContext 已绑定、控件已初始化）
             this.Loaded += HomeWindow_Loaded;
         }
 
         private async void HomeWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 窗口完全加载后从数据库加载电影
             await _viewModel.LoadMoviesAsync();
         }
 
         /// <summary>
-        /// 电影卡片点击 → 打开播放弹窗。
+        /// 电影卡片左键点击 → 打开播放弹窗。
         /// </summary>
         private void MovieCard_Click(object sender, MouseButtonEventArgs e)
         {
@@ -59,6 +58,21 @@ namespace LoginWindow.Views
                 var player = new PlayerWindow(movie.VideoFilePath);
                 player.Owner = this;
                 player.Show();
+            }
+        }
+
+        /// <summary>
+        /// 电影卡片右键点击 → 打开详情弹窗（管理标签）。
+        /// </summary>
+        private void MovieCard_RightClick(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is Movie movie)
+            {
+                var detail = new MovieDetailWindow(movie, _viewModel.MovieService);
+                detail.Owner = this;
+                detail.ShowDialog();
+                // 关闭后刷新海报列表（标签可能在详情里改过）
+                _ = _viewModel.LoadMoviesAsync();
             }
         }
     }
