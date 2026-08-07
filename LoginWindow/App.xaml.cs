@@ -25,10 +25,15 @@ namespace LoginWindow
         {
             base.OnStartup(e);
 
-            var dbPath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "FamilyTheater.db");
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+            var appDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "FamilyTheater");
+            Directory.CreateDirectory(appDataDir);
+            var dbPath = Path.Combine(appDataDir, "FamilyTheater. db");
+            // 一次性迁移：如果AppData 里没有数据库但程序目录下有旧库，自动复制过去
+            var oldDbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FamilyTheater. db");
+            if (!File.Exists(dbPath) && File.Exists(oldDbPath))
+                File.Copy(oldDbPath, dbPath, overwrite: false);
 
             AppHost = Host.CreateDefaultBuilder()
                 .ConfigureServices((context, services) =>

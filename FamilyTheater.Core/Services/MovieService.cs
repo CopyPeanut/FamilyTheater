@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using FFMpegCore;
+using FamilyTheater.Core.Helper;
+using System.Drawing;
 
 namespace FamilyTheater.Core.Services;
 
@@ -66,6 +69,12 @@ public class MovieService : IMovieService
             }
 
             var posterFile = FindPosterFile(folder);
+
+            // 没有海报图片 → 尝试用 FFmpeg 提取视频关键帧
+            if (posterFile == null)
+            {
+                posterFile = await ExtractPosterFromVideoAsync(videoFile, folder);
+            }
             var tags = ExtractTagsFromPath(rootPath, folder);
 
             if (existingMovies.TryGetValue(folder, out var movie))
@@ -321,6 +330,31 @@ public class MovieService : IMovieService
 
         // 没有命名优先项，取第一张图片
         return images[0];
+    }
+
+    /// <summary>
+    /// 用 FFmpeg 提取视频第 10 秒的关键帧作为海报，保存为 poster_auto.jpg。
+    /// 需要 ffmpeg.exe（首次使用时 FFmpegHelper 自动下载）。
+    /// 失败返回 null，不影响扫描流程。
+    /// </summary>
+    private async Task<string?> ExtractPosterFromVideoAsync(string videoPath, string folder)
+    {
+        try
+        {
+            if (!await FFmpegHelper.EnsureAvailableAsync())
+                return null;
+
+            var posterPath = Path.Combine(folder, "poster_auto.jpg");
+
+            // 提取第 10 秒的帧，宽度 200，高度 0 = 按比例
+            FFMpeg.Snapshot(videoPath, posterPath, new System.Drawing.Size(200, 0), TimeSpan.FromSeconds(10));
+
+            return File.Exists(posterPath) ? posterPath : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>
