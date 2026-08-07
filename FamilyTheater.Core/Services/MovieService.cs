@@ -347,7 +347,21 @@ public class MovieService : IMovieService
             var posterPath = Path.Combine(folder, "poster_auto.jpg");
 
             // 提取第 10 秒的帧，宽度 200，高度 0 = 按比例
-            FFMpeg.Snapshot(videoPath, posterPath, new System.Drawing.Size(200, 0), TimeSpan.FromSeconds(10));
+            var args = $"-y -ss 10 -i \"{videoPath}\" -vframes 1 -vf \"scale=1284:-1\" \"{posterPath}\"";
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = FFmpegHelper.FfmpegExePath,
+                Arguments = args,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+            };
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc == null) return null;
+            await proc.WaitForExitAsync();
+            proc.StandardError.ReadToEnd();
+            proc.StandardOutput.ReadToEnd();
 
             return File.Exists(posterPath) ? posterPath : null;
         }

@@ -14,7 +14,7 @@ namespace FamilyTheater.Core.Helper
             AppContext.BaseDirectory, "ffmpeg");
 
         private static readonly string FfmpegPath = Path.Combine(BinDir, "ffmpeg.exe");
-
+        public static string FfmpegExePath => FfmpegPath;
         private static bool _configured = false;
         private static readonly object _lock = new();
         private static bool _available = false;
