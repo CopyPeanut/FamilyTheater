@@ -266,6 +266,15 @@
                         </TextBox.InputBindings>
                     </TextBox>
 
+                    <Button Content="随机"
+                              Command="{Binding FillRandomCmd}"
+                              Width="70" Height="32"
+                              FontSize="13" Foreground="White" Background="#333333"
+                              BorderBrush="#555555" BorderThickness="1"
+                              Margin="10,0,0,0" Cursor="Hand"
+                              ToolTip="用随机电影填满当前页">
+                    </Button>
+
                 </StackPanel>
             </Border>
         </Grid>

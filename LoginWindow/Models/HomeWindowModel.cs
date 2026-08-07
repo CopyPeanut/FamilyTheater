@@ -63,6 +63,7 @@ namespace LoginWindow.Models
         public ReactiveCommand<Unit, int> LastPageCmd { get; }
         public ReactiveCommand<int, Unit> GoToPageCmd { get; }
         public ReactiveCommand<Unit, Unit> JumpPageCmd { get; }
+        public ReactiveCommand<Unit, Unit> FillRandomCmd { get; }
         public ReactiveCommand<Unit, Unit> OpenConfigCmd { get; }
         public ReactiveCommand<string, Unit> ToggleTagCmd { get; }
 
@@ -88,6 +89,20 @@ namespace LoginWindow.Models
                 if (int.TryParse(JumpPageText, out var page) && page >= 1 && page <= TotalPages)
                     CurrentPage = page;
                 JumpPageText = string.Empty;
+            });
+            FillRandomCmd = ReactiveCommand.Create(() =>
+            {
+                if (_allMovies.Count == 0) return;
+
+                var random = new Random();
+                var randomMovies = _allMovies
+                    .OrderBy(_ => random.Next())
+                    .Take(PageSize)
+                    .ToList();
+
+                CurrentPageMovies.Clear();
+                foreach (var movie in randomMovies)
+                    CurrentPageMovies.Add(movie);
             });
             OpenConfigCmd = ReactiveCommand.Create(() =>
             {
