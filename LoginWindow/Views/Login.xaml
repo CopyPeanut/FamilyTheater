@@ -26,12 +26,50 @@
                 <RowDefinition/>
             </Grid.RowDefinitions>
 
-            <!--第一大列，标题-->
-            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Grid.Row="0" Grid.RowSpan="4" Grid.Column="0">
-                <TextBlock Text="" FontSize="40" Foreground="White" HorizontalAlignment="Center" Margin="20" />
-                <TextBlock Text="" FontSize="40" Foreground="White" HorizontalAlignment="Center" Margin="20" />
-                <TextBlock Text="" FontSize="40" Foreground="White" HorizontalAlignment="Center" Margin="20" />
-                <TextBlock Text="" FontSize="40" Foreground="White" HorizontalAlignment="Center" Margin="20" />
+            <!--第一大列，标题：花生剧场（彩色描边风格）-->
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center"
+            Grid.Row="0" Grid.RowSpan="4" Grid.Column="0">
+
+                <!-- 花 — 金色 -->
+                <Border  Margin="20,20,20,2" Padding="0,0,0,2">
+                    <TextBlock Text="花" FontSize="42" FontFamily="/LoginWindow;component/Resource/#三极酷圆简体"
+                   Foreground="White" HorizontalAlignment="Center" FontWeight="Bold">
+                        <TextBlock.Effect>
+                            <DropShadowEffect Color="#FFD700" BlurRadius="5" ShadowDepth="0" Opacity="0.9"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                </Border>
+
+                <!-- 生 — 珊瑚橙 -->
+                <Border   Margin="20,18,20,2" Padding="0,0,0,2">
+                    <TextBlock Text="生" FontSize="42" FontFamily="/LoginWindow;component/Resource/#三极酷圆简体"
+                   Foreground="White" HorizontalAlignment="Center" FontWeight="Bold">
+                        <TextBlock.Effect>
+                            <DropShadowEffect Color="#FFD700" BlurRadius="5" ShadowDepth="0" Opacity="0.9"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                </Border>
+
+                <!-- 剧 — 薰衣草紫 -->
+                <Border   Margin="20,18,20,2" Padding="0,0,0,2">
+                    <TextBlock Text="剧" FontSize="42" FontFamily="/LoginWindow;component/Resource/#三极酷圆简体"
+                   Foreground="White" HorizontalAlignment="Center" FontWeight="Bold">
+                        <TextBlock.Effect>
+                            <DropShadowEffect Color="#FFD700" BlurRadius="5" ShadowDepth="0" Opacity="0.9"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                </Border>
+
+                <!-- 场 — 天青蓝 -->
+                <Border   Margin="20,18,20,20" Padding="0,0,0,2">
+                    <TextBlock Text="场" FontSize="42" FontFamily="/LoginWindow;component/Resource/#三极酷圆简体"
+                   Foreground="White" HorizontalAlignment="Center" FontWeight="Bold">
+                        <TextBlock.Effect>
+                            <DropShadowEffect Color="#FFD700" BlurRadius="5" ShadowDepth="0" Opacity="0.9"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                </Border>
+
             </StackPanel>
 
             <!--第二列-->
