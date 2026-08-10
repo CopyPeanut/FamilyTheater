@@ -48,6 +48,9 @@ namespace LoginWindow.Models
         [Reactive] public string JumpPageText { get; set; } = string.Empty;
         [Reactive] public string SearchText { get; set; } = string.Empty;
 
+        /// <summary>当前激活的分类：movie / picture / manga / game</summary>
+        [Reactive] public string ActiveCategory { get; set; } = "movie";
+
         /// <summary>当前页显示的电影（筛选+分页后的子集）</summary>
         public ObservableCollection<Movie> CurrentPageMovies { get; } = new();
 
@@ -66,6 +69,7 @@ namespace LoginWindow.Models
         public ReactiveCommand<Unit, Unit> FillRandomCmd { get; }
         public ReactiveCommand<Unit, Unit> OpenConfigCmd { get; }
         public ReactiveCommand<string, Unit> ToggleTagCmd { get; }
+        public ReactiveCommand<string, Unit> SwitchCategoryCmd { get; }
 
         public HomeWindowModel(IUserService userService, IMovieService movieService, Func<ConfigWindow> configWindowFactory)
         {
@@ -121,6 +125,12 @@ namespace LoginWindow.Models
                     CurrentPage = 1;
                     ApplyFilter();
                 }
+            });
+
+            // 分类切换：movie / picture / manga / game（暂只切换选中状态，不实现页面内容）
+            SwitchCategoryCmd = ReactiveCommand.Create<string>(category =>
+            {
+                ActiveCategory = category;
             });
 
             // 搜索文本变化时重新筛选（防抖 300ms）

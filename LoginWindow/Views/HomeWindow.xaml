@@ -34,7 +34,136 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- 按钮容器，靠右对齐，并设置统一的图标大小和间距 -->
+                    <!-- 分类切换选项 -->
+                      <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0">
+                          <Button Content="Movie" Command="{Binding SwitchCategoryCmd}" CommandParameter="movie">
+                              <Button.Style>
+                                  <Style TargetType="Button">
+                                      <Setter Property="Cursor" Value="Hand"/>
+                                      <Setter Property="BorderThickness" Value="0"/>
+                                      <Setter Property="FontSize" Value="16"/>
+                                      <Setter Property="FontWeight" Value="Normal"/>
+                                      <Setter Property="Foreground" Value="White"/>
+                                      <Setter Property="Background" Value="Transparent"/>
+                                      <Setter Property="Padding" Value="0"/>
+                                      <Setter Property="Template">
+                                          <Setter.Value>
+                                              <ControlTemplate TargetType="Button">
+                                                  <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                  </Border>
+                                              </ControlTemplate>
+                                          </Setter.Value>
+                                      </Setter>
+                                      <Style.Triggers>
+                                          <DataTrigger Binding="{Binding ActiveCategory}" Value="movie">
+                                              <Setter Property="FontWeight" Value="Bold"/>
+                                            <Setter Property="Foreground" Value="Black"/>
+                                            <Setter Property="Padding" Value="8,2"/>
+                                          </DataTrigger>
+                                      </Style.Triggers>
+                                  </Style>
+                              </Button.Style>
+                          </Button>
+
+                          <TextBlock Text="|" Foreground="White" FontSize="16" Margin="12,0,12,0" VerticalAlignment="Center"/>
+
+                          <Button Content="Picture" Command="{Binding SwitchCategoryCmd}" CommandParameter="picture">
+                              <Button.Style>
+                                  <Style TargetType="Button">
+                                      <Setter Property="Cursor" Value="Hand"/>
+                                      <Setter Property="BorderThickness" Value="0"/>
+                                      <Setter Property="FontSize" Value="16"/>
+                                      <Setter Property="FontWeight" Value="Normal"/>
+                                      <Setter Property="Foreground" Value="White"/>
+                                      <Setter Property="Background" Value="Transparent"/>
+                                      <Setter Property="Padding" Value="0"/>
+                                      <Setter Property="Template">
+                                          <Setter.Value>
+                                              <ControlTemplate TargetType="Button">
+                                                  <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                  </Border>
+                                              </ControlTemplate>
+                                          </Setter.Value>
+                                      </Setter>
+                                      <Style.Triggers>
+                                          <DataTrigger Binding="{Binding ActiveCategory}" Value="picture">
+                                              <Setter Property="FontWeight" Value="Bold"/>
+                                            <Setter Property="Foreground" Value="Black"/>
+                                            <Setter Property="Padding" Value="8,2"/>
+                                          </DataTrigger>
+                                      </Style.Triggers>
+                                  </Style>
+                              </Button.Style>
+                          </Button>
+
+                          <TextBlock Text="|" Foreground="White" FontSize="16" Margin="12,0,12,0" VerticalAlignment="Center"/>
+
+                          <Button Content="Manga" Command="{Binding SwitchCategoryCmd}" CommandParameter="manga">
+                              <Button.Style>
+                                  <Style TargetType="Button">
+                                      <Setter Property="Cursor" Value="Hand"/>
+                                      <Setter Property="BorderThickness" Value="0"/>
+                                      <Setter Property="FontSize" Value="16"/>
+                                      <Setter Property="FontWeight" Value="Normal"/>
+                                      <Setter Property="Foreground" Value="White"/>
+                                      <Setter Property="Background" Value="Transparent"/>
+                                      <Setter Property="Padding" Value="0"/>
+                                      <Setter Property="Template">
+                                          <Setter.Value>
+                                              <ControlTemplate TargetType="Button">
+                                                  <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                  </Border>
+                                              </ControlTemplate>
+                                          </Setter.Value>
+                                      </Setter>
+                                      <Style.Triggers>
+                                          <DataTrigger Binding="{Binding ActiveCategory}" Value="manga">
+                                              <Setter Property="FontWeight" Value="Bold"/>
+                                            <Setter Property="Foreground" Value="Black"/>
+                                            <Setter Property="Padding" Value="8,2"/>
+                                          </DataTrigger>
+                                      </Style.Triggers>
+                                  </Style>
+                              </Button.Style>
+                          </Button>
+
+                          <TextBlock Text="|" Foreground="White" FontSize="16" Margin="12,0,12,0" VerticalAlignment="Center"/>
+
+                          <Button Content="Game" Command="{Binding SwitchCategoryCmd}" CommandParameter="game">
+                              <Button.Style>
+                                  <Style TargetType="Button">
+                                      <Setter Property="Cursor" Value="Hand"/>
+                                      <Setter Property="BorderThickness" Value="0"/>
+                                      <Setter Property="FontSize" Value="16"/>
+                                      <Setter Property="FontWeight" Value="Normal"/>
+                                      <Setter Property="Foreground" Value="White"/>
+                                      <Setter Property="Background" Value="Transparent"/>
+                                      <Setter Property="Padding" Value="0"/>
+                                      <Setter Property="Template">
+                                          <Setter.Value>
+                                              <ControlTemplate TargetType="Button">
+                                                  <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                  </Border>
+                                              </ControlTemplate>
+                                          </Setter.Value>
+                                      </Setter>
+                                      <Style.Triggers>
+                                          <DataTrigger Binding="{Binding ActiveCategory}" Value="game">
+                                              <Setter Property="FontWeight" Value="Bold"/>
+                                            <Setter Property="Foreground" Value="Black"/>
+                                            <Setter Property="Padding" Value="8,2"/>
+                                          </DataTrigger>
+                                      </Style.Triggers>
+                                  </Style>
+                              </Button.Style>
+                          </Button>
+                      </StackPanel>
+
+                      <!-- 按钮容器，靠右对齐，并设置统一的图标大小和间距 -->
                     <StackPanel  Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
 
                         <!-- 1. 设置按钮 -->
@@ -218,6 +347,17 @@
             <Border Grid.Row="3" Background="#f1b054" CornerRadius="10,10,0,0" Padding="15,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
 
+                    <!-- 首页按钮 -->
+                    <Button Content="⏮" Command="{Binding FirstPageCmd}"
+                            Width="32" Height="32" Margin="2,0" FontSize="14"
+                            Background="Black" Foreground="White" BorderThickness="0" Cursor="Hand"
+                            ToolTip="第一页"/>
+                    <!-- 上一页按钮 -->
+                    <Button Content="◀" Command="{Binding PrevPageCmd}"
+                            Width="32" Height="32" Margin="2,0" FontSize="12"
+                            Background="Black" Foreground="White" BorderThickness="0" Cursor="Hand"
+                            ToolTip="上一页 (←)"/>
+
                     <!-- 页码小方块（当前页±3） -->
                     <ItemsControl ItemsSource="{Binding PageNumbers}">
                         <ItemsControl.ItemsPanel>
@@ -255,6 +395,17 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- 下一页按钮 -->
+                    <Button Content="▶" Command="{Binding NextPageCmd}"
+                            Width="32" Height="32" Margin="2,0" FontSize="12"
+                            Background="Black" Foreground="White" BorderThickness="0" Cursor="Hand"
+                            ToolTip="下一页 (→)"/>
+                    <!-- 末页按钮 -->
+                    <Button Content="⏭" Command="{Binding LastPageCmd}"
+                            Width="32" Height="32" Margin="2,0" FontSize="14"
+                            Background="Black" Foreground="White" BorderThickness="0" Cursor="Hand"
+                            ToolTip="最后一页"/>
 
                     <!-- 跳转输入框（跟在方块后面） -->
                     <TextBlock Text="跳转" Foreground="Black" VerticalAlignment="Center" Margin="20,0,5,0" FontSize="14"/>

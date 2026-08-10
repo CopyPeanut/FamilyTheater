@@ -39,7 +39,8 @@ namespace LoginWindow.Views
             _viewModel = viewModel;
             this.DataContext = viewModel;
             ViewModel = viewModel;
-
+            this.InputBindings.Add(new KeyBinding(viewModel.PrevPageCmd, Key.Left, ModifierKeys.None));
+            this.InputBindings.Add(new KeyBinding(viewModel.NextPageCmd, Key.Right, ModifierKeys.None));
             this.Loaded += HomeWindow_Loaded;
         }
 
