@@ -420,5 +420,23 @@ public class MovieService : IMovieService
 
             movie.MovieTags.Add(new MovieTag { Movie = movie, Tag = tag });
         }
+        }
+
+        /// <summary>
+        /// 删除电影记录及其所有标签关联（MovieTag），不删除 Tag 记录本身。
+        /// </summary>
+        public async Task DeleteMovieAsync(int movieId)
+        {
+            var movie = await _db.Movies
+                .Include(m => m.MovieTags)
+                .FirstOrDefaultAsync(m => m.Id == movieId);
+            if (movie == null)
+                return;
+
+            // 删除所有标签关联
+            _db.MovieTags.RemoveRange(movie.MovieTags);
+            // 删除电影记录
+            _db.Movies.Remove(movie);
+            await _db.SaveChangesAsync();
+        }
     }
-}

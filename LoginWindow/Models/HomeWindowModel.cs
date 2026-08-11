@@ -32,16 +32,23 @@ namespace LoginWindow.Models
     {
         private readonly IUserService _userService;
         private readonly IMovieService _movieService;
+        private readonly IPictureService _pictureService;
         private readonly Func<ConfigWindow> _configWindowFactory;
 
         /// <summary>暴露给 View 层，用于打开详情弹窗时传递</summary>
         public IMovieService MovieService => _movieService;
 
-        /// <summary>每页显示的电影数量</summary>
+        /// <summary>暴露给 View 层，用于打开图片详情弹窗时传递</summary>
+        public IPictureService PictureService => _pictureService;
+
+        /// <summary>每页显示的数量（电影和图片通用）</summary>
         private const int PageSize = 24;
 
         /// <summary>全部电影（从数据库加载，作为筛选源）</summary>
         private List<Movie> _allMovies = new();
+
+        /// <summary>全部图片（从数据库加载，作为筛选源）</summary>
+        private List<Picture> _allPictures = new();
 
         [Reactive] public int CurrentPage { get; set; } = 1;
         [Reactive] public int TotalPages { get; set; } = 1;
@@ -53,6 +60,9 @@ namespace LoginWindow.Models
 
         /// <summary>当前页显示的电影（筛选+分页后的子集）</summary>
         public ObservableCollection<Movie> CurrentPageMovies { get; } = new();
+
+        /// <summary>当前页显示的图片（筛选+分页后的子集）</summary>
+        public ObservableCollection<Picture> CurrentPagePictures { get; } = new();
 
         /// <summary>全部标签（用于渲染标签方块）</summary>
         public ObservableCollection<TagViewModel> Tags { get; } = new();
@@ -71,10 +81,11 @@ namespace LoginWindow.Models
         public ReactiveCommand<string, Unit> ToggleTagCmd { get; }
         public ReactiveCommand<string, Unit> SwitchCategoryCmd { get; }
 
-        public HomeWindowModel(IUserService userService, IMovieService movieService, Func<ConfigWindow> configWindowFactory)
+        public HomeWindowModel(IUserService userService, IMovieService movieService, IPictureService pictureService, Func<ConfigWindow> configWindowFactory)
         {
             _userService = userService;
             _movieService = movieService;
+            _pictureService = pictureService;
             _configWindowFactory = configWindowFactory;
 
             var canMoveBack = this.WhenAnyValue(x => x.CurrentPage, p => p > 1);
@@ -127,10 +138,25 @@ namespace LoginWindow.Models
                 }
             });
 
-            // 分类切换：movie / picture / manga / game（暂只切换选中状态，不实现页面内容）
+            // 分类切换：movie / picture / manga / game
             SwitchCategoryCmd = ReactiveCommand.Create<string>(category =>
             {
                 ActiveCategory = category;
+                // 清空搜索和标签选中状态
+                SearchText = string.Empty;
+                foreach (var tag in Tags)
+                    tag.IsSelected = false;
+                CurrentPage = 1;
+
+                // 根据分类加载数据
+                if (category == "picture")
+                {
+                    _ = LoadPicturesAsync();
+                }
+                else
+                {
+                    _ = LoadMoviesAsync();
+                }
             });
 
             // 搜索文本变化时重新筛选（防抖 300ms）
@@ -173,9 +199,42 @@ namespace LoginWindow.Models
         }
 
         /// <summary>
+        /// 从数据库加载全部图片和标签，填充首页。
+        /// </summary>
+        public async Task LoadPicturesAsync()
+        {
+            // 加载图片
+            var pictures = await _pictureService.GetAllPicturesAsync();
+            _allPictures = pictures ?? new List<Picture>();
+
+            // 加载图片标签并渲染为方块
+            var tags = await _pictureService.GetAllTagsAsync();
+            Tags.Clear();
+            foreach (var t in tags)
+                Tags.Add(new TagViewModel(t.Name));
+
+            // 重置筛选并刷新
+            SearchText = string.Empty;
+            CurrentPage = 1;
+            ApplyFilter();
+        }
+
+        /// <summary>
         /// 按 SearchText + 选中的 Tags 筛选 _allMovies，重算 TotalPages 并刷新当前页。
         /// </summary>
         private void ApplyFilter()
+        {
+            if (ActiveCategory == "picture")
+            {
+                ApplyPictureFilter();
+            }
+            else
+            {
+                ApplyMovieFilter();
+            }
+        }
+
+        private void ApplyMovieFilter()
         {
             IEnumerable<Movie> filtered = _allMovies;
 
@@ -215,14 +274,67 @@ namespace LoginWindow.Models
             RefreshCurrentPageMovies();
         }
 
+        private void ApplyPictureFilter()
+        {
+            IEnumerable<Picture> filtered = _allPictures;
+
+            // 标签筛选
+            var selectedTagNames = Tags
+                .Where(t => t.IsSelected)
+                .Select(t => t.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (selectedTagNames.Count > 0)
+            {
+                filtered = filtered.Where(p =>
+                    p.PictureTags != null &&
+                    p.PictureTags.Any(pt =>
+                        pt.Tag != null &&
+                        selectedTagNames.Contains(pt.Tag.Name)));
+            }
+
+            // 搜索筛选：文件名包含搜索文本（忽略大小写）
+            var search = (SearchText ?? string.Empty).Trim();
+            if (!string.IsNullOrEmpty(search))
+            {
+                filtered = filtered.Where(p =>
+                    p.FileName != null &&
+                    p.FileName.Contains(search, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var filteredList = filtered.ToList();
+
+            TotalPages = Math.Max(1, (int)Math.Ceiling(filteredList.Count / (double)PageSize));
+            CurrentPage = Math.Min(CurrentPage, TotalPages);
+
+            // 存储筛选结果供分页使用
+            _filteredPictures = filteredList;
+
+            RefreshPageNumbers();
+            RefreshCurrentPageMovies();
+        }
+
         private List<Movie> _filteredMovies = new();
+        private List<Picture> _filteredPictures = new();
 
         private void RefreshCurrentPageMovies()
         {
-            CurrentPageMovies.Clear();
-            var skip = (CurrentPage - 1) * PageSize;
-            foreach (var movie in _filteredMovies.Skip(skip).Take(PageSize))
-                CurrentPageMovies.Add(movie);
+            if (ActiveCategory == "picture")
+            {
+                CurrentPageMovies.Clear();
+                CurrentPagePictures.Clear();
+                var skip = (CurrentPage - 1) * PageSize;
+                foreach (var picture in _filteredPictures.Skip(skip).Take(PageSize))
+                    CurrentPagePictures.Add(picture);
+            }
+            else
+            {
+                CurrentPageMovies.Clear();
+                CurrentPagePictures.Clear();
+                var skip = (CurrentPage - 1) * PageSize;
+                foreach (var movie in _filteredMovies.Skip(skip).Take(PageSize))
+                    CurrentPageMovies.Add(movie);
+            }
         }
 
         private void RefreshPageNumbers()

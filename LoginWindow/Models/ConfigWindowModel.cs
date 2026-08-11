@@ -1,4 +1,4 @@
-﻿using FamilyTheater.Core.Services;
+using FamilyTheater.Core.Services;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System;
@@ -12,23 +12,26 @@ namespace LoginWindow.Models
     {
         private readonly ISettingService _settingService;
         private readonly IMovieService _movieService;
+        private readonly IPictureService _pictureService;
 
         [Reactive] public string MediaRootPath { get; set; } = string.Empty;
+        [Reactive] public string PictureRootPath { get; set; } = string.Empty;
         [Reactive] public string StatusMessage { get; set; } = string.Empty;
         [Reactive] public bool IsScanning { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseCommand { get; }
+        public ReactiveCommand<string, Unit> BrowseCommand { get; }
         public ReactiveCommand<Unit, Unit> SaveCommand { get; }
 
-        public ConfigWindowModel(ISettingService settingService, IMovieService movieService)
+        public ConfigWindowModel(ISettingService settingService, IMovieService movieService, IPictureService pictureService)
         {
             _settingService = settingService;
             _movieService = movieService;
+            _pictureService = pictureService;
 
             // 保存命令在扫描期间禁用
             var canSave = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning);
             SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
-            BrowseCommand = ReactiveCommand.CreateFromTask(BrowseAsync, canSave);
+            BrowseCommand = ReactiveCommand.CreateFromTask<string>(BrowseAsync, canSave);
 
             // 加载已有配置
             _ = LoadAsync();
@@ -36,39 +39,65 @@ namespace LoginWindow.Models
 
         private async Task LoadAsync()
         {
-            var path = await _settingService.GetMediaRootPathAsync();
-            MediaRootPath = path ?? string.Empty;
+            var mediaPath = await _settingService.GetMediaRootPathAsync();
+            MediaRootPath = mediaPath ?? string.Empty;
+
+            var picturePath = await _settingService.GetPictureRootPathAsync();
+            PictureRootPath = picturePath ?? string.Empty;
         }
 
-        private async Task BrowseAsync()
+        /// <summary>
+        /// 浏览选择目录。CommandParameter: "media" 或 "picture"。
+        /// </summary>
+        private async Task BrowseAsync(string target)
         {
             var dialog = new FolderBrowserDialog
             {
-                Description = "选择媒体根目录",
                 ShowNewFolderButton = true
             };
-            if (dialog.ShowDialog() == DialogResult.OK)
+
+            if (target == "picture")
             {
-                MediaRootPath = dialog.SelectedPath;
+                dialog.Description = "选择图片根目录";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    PictureRootPath = dialog.SelectedPath;
+                }
+            }
+            else
+            {
+                dialog.Description = "选择媒体根目录";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    MediaRootPath = dialog.SelectedPath;
+                }
             }
         }
 
         private async Task SaveAsync()
         {
             IsScanning = true;
-            StatusMessage = "正在扫描入库...";
+            StatusMessage = "正在保存并扫描入库...";
             try
             {
-                // 1. 保存媒体根目录到数据库
+                var mediaMsg = string.Empty;
+                var pictureMsg = string.Empty;
+
+                // 1. 保存媒体根目录并扫描
                 await _settingService.SetMediaRootPathAsync(MediaRootPath ?? string.Empty);
+                var movieResult = await _movieService.ScanLibraryAsync();
+                mediaMsg = movieResult.Added == 0 && movieResult.Updated == 0 && movieResult.Skipped == 0
+                    ? "电影：未发现可入库的视频文件"
+                    : $"电影 — 新增 {movieResult.Added} 部，更新 {movieResult.Updated} 部，跳过 {movieResult.Skipped} 个文件夹";
 
-                // 2. 触发扫描入库
-                var result = await _movieService.ScanLibraryAsync();
+                // 2. 保存图片根目录并扫描
+                await _settingService.SetPictureRootPathAsync(PictureRootPath ?? string.Empty);
+                var picResult = await _pictureService.ScanLibraryAsync();
+                pictureMsg = picResult.Added == 0 && picResult.Updated == 0 && picResult.Skipped == 0
+                    ? "图片：未发现可入库的图片文件"
+                    : $"图片 — 新增 {picResult.Added} 张，更新 {picResult.Updated} 张，跳过 {picResult.Skipped} 个文件夹";
 
-                // 3. 显示扫描结果
-                StatusMessage = result.Added == 0 && result.Updated == 0 && result.Skipped == 0
-                    ? "保存成功，未发现可入库的视频文件"
-                    : $"保存成功 — 新增 {result.Added} 部，更新 {result.Updated} 部，跳过 {result.Skipped} 个文件夹";
+                StatusMessage = $"{mediaMsg}；{pictureMsg}";
             }
             catch (Exception ex)
             {

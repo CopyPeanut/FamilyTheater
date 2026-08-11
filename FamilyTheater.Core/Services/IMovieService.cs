@@ -44,6 +44,11 @@ public interface IMovieService
     /// 返回更新后的 Movie（路径已更新），失败返回 null。
     /// </summary>
     Task<Movie?> RenameMovieAsync(int movieId, string newTitle);
+
+    /// <summary>
+    /// 删除电影记录及其所有标签关联（MovieTag），不删除 Tag 记录本身。
+    /// </summary>
+    Task DeleteMovieAsync(int movieId);
 }
 
 /// <summary>
@@ -54,4 +59,5 @@ public class ScanResult
     public int Added { get; set; }
     public int Updated { get; set; }
     public int Skipped { get; set; }
+
 }

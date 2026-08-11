@@ -42,5 +42,9 @@ namespace FamilyTheater.Core.Services
         public Task<string?> GetMediaRootPathAsync() => GetAsync(MediaRootPathKey);
 
         public Task SetMediaRootPathAsync(string path) => SetAsync(MediaRootPathKey, path);
+
+        private const string PictureRootPathKey = "PictureRootPath";
+        public Task<string?> GetPictureRootPathAsync() => GetAsync(PictureRootPathKey);
+        public Task SetPictureRootPathAsync(string path) => SetAsync(PictureRootPathKey, path);
     }
 }

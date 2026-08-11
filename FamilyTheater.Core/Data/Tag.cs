@@ -21,4 +21,9 @@ public class Tag
     /// 导航属性。
     /// </summary>
     public List<MovieTag> MovieTags { get; set; } = new();
+
+    /// <summary>
+    /// Picture 多对多导航属性。
+    /// </summary>
+    public List<PictureTag> PictureTags { get; set; } = new();
 }

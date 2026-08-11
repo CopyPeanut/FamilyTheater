@@ -16,6 +16,22 @@ namespace LoginWindow.Views
             var dlg = new CustomMessageBox(message, level, button, icon);
             dlg.Show();
         }
+        /// <summary>
+        /// 模态弹窗，返回用户是否点了确认。
+        /// </summary>
+        public static bool ShowDialog(
+            string message,
+            LogLevel level = LogLevel.WARN,
+            MessageBoxButton button = MessageBoxButton.OKCancel,
+            MessageBoxImage icon = MessageBoxImage.Warning)
+        {
+            var dlg = new CustomMessageBox(message, level, button, icon);
+            dlg._result = false;
+            dlg.ShowDialog();
+            return dlg._result;
+        }
+
+        private bool _result;
 
         private CustomMessageBox(string message, LogLevel level,
                                   MessageBoxButton button, MessageBoxImage icon)
@@ -58,7 +74,7 @@ namespace LoginWindow.Views
         }
 
         // ✅ 两个按钮都只做 Hide，不记录任何结果
-        private void OnConfirm(object sender, RoutedEventArgs e) => Close();
-        private void OnCancel(object sender, RoutedEventArgs e) => Close();
+        private void OnConfirm(object sender, RoutedEventArgs e) { _result = true; Close(); }
+        private void OnCancel(object sender, RoutedEventArgs e) { _result = false; Close(); }
     }
 }

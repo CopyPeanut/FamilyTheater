@@ -23,5 +23,15 @@ namespace FamilyTheater.Core.Services
         /// 写入媒体根目录配置。
         /// </summary>
         Task SetMediaRootPathAsync(string path);
+
+        /// <summary>
+        /// 读取图片根目录配置（key = "PictureRootPath"）。
+        /// </summary>
+        Task<string?> GetPictureRootPathAsync();
+
+        /// <summary>
+        /// 写入图片根目录配置。
+        /// </summary>
+        Task SetPictureRootPathAsync(string path);
     }
 }

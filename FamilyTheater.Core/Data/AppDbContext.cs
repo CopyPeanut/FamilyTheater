@@ -14,6 +14,8 @@ namespace FamilyTheater.Core.Data
         public DbSet<Tag> Tags { get; set; } = null!;
         public DbSet<MovieTag> MovieTags { get; set; } = null!;
         public DbSet<Setting> Settings { get; set; } = null!;
+        public DbSet<Picture> Pictures { get; set; } = null!;
+        public DbSet<PictureTag> PictureTags { get; set; } = null!;
 
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options)
@@ -55,6 +57,29 @@ namespace FamilyTheater.Core.Data
                 entity.HasOne(mt => mt.Tag)
                       .WithMany(t => t.MovieTags)
                       .HasForeignKey(mt => mt.TagId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Picture 配置
+            modelBuilder.Entity<Picture>(entity =>
+            {
+                entity.HasIndex(p => p.FilePath).IsUnique();
+                entity.HasIndex(p => p.FileName);
+            });
+
+            // PictureTag 多对多关联
+            modelBuilder.Entity<PictureTag>(entity =>
+            {
+                entity.HasKey(pt => new { pt.PictureId, pt.TagId });
+
+                entity.HasOne(pt => pt.Picture)
+                      .WithMany(p => p.PictureTags)
+                      .HasForeignKey(pt => pt.PictureId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(pt => pt.Tag)
+                      .WithMany(t => t.PictureTags)
+                      .HasForeignKey(pt => pt.TagId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
         }

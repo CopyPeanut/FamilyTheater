@@ -19,6 +19,7 @@ namespace FamilyTheater.Core.Services
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<ISettingService, SettingService>();
             services.AddScoped<IMovieService, MovieService>();
+            services.AddScoped<IPictureService, PictureService>();
 
             return services;
         }
