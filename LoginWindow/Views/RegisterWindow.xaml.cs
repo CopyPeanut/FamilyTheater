@@ -1,4 +1,4 @@
-﻿using LoginWindow.Models;
+using LoginWindow.Models;
 using ReactiveUI;
 using System.Reactive.Disposables;
 using System.Windows;

@@ -1,4 +1,4 @@
-﻿using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Helper;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;

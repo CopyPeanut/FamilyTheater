@@ -1,4 +1,4 @@
-﻿namespace FamilyTheater.Core.Enum;
+namespace FamilyTheater.Core.Enum;
 
 public enum LogLevel
 {

@@ -1,4 +1,4 @@
-﻿using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Services;
 using System.Reactive.Disposables;
 using System.Windows;

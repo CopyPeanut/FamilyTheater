@@ -1,4 +1,4 @@
-﻿using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Enum;
 using FamilyTheater.Core.Helper;
 using FamilyTheater.Core.Services;

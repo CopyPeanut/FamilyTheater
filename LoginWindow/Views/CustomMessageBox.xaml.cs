@@ -1,4 +1,4 @@
-﻿using FamilyTheater.Core.Enum;
+using FamilyTheater.Core.Enum;
 using System.Windows;
 using System.Windows.Media;
 
