@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +11,6 @@ namespace FamilyTheater.Core.Data
     {
         public DbSet<User> Users { get; set; } = null!;
         public DbSet<Movie> Movies { get; set; } = null!;
-        public DbSet<Tag> Tags { get; set; } = null!;
         public DbSet<MovieTag> MovieTags { get; set; } = null!;
         public DbSet<Setting> Settings { get; set; } = null!;
         public DbSet<Picture> Pictures { get; set; } = null!;
@@ -38,25 +37,14 @@ namespace FamilyTheater.Core.Data
                 entity.HasIndex(m => m.Title);
             });
 
-            // Tag 配置
-            modelBuilder.Entity<Tag>(entity =>
-            {
-                entity.HasIndex(t => t.Name).IsUnique();
-            });
-
-            // MovieTag 多对多关联
+            // MovieTag 配置：合并标签字典+关联，联合唯一 (MovieId, TagName)
             modelBuilder.Entity<MovieTag>(entity =>
             {
-                entity.HasKey(mt => new { mt.MovieId, mt.TagId });
+                entity.HasIndex(mt => new { mt.MovieId, mt.TagName }).IsUnique();
 
                 entity.HasOne(mt => mt.Movie)
                       .WithMany(m => m.MovieTags)
                       .HasForeignKey(mt => mt.MovieId)
-                      .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(mt => mt.Tag)
-                      .WithMany(t => t.MovieTags)
-                      .HasForeignKey(mt => mt.TagId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -67,19 +55,14 @@ namespace FamilyTheater.Core.Data
                 entity.HasIndex(p => p.FileName);
             });
 
-            // PictureTag 多对多关联
+            // PictureTag 配置：联合唯一 (PictureId, TagName)
             modelBuilder.Entity<PictureTag>(entity =>
             {
-                entity.HasKey(pt => new { pt.PictureId, pt.TagId });
+                entity.HasIndex(pt => new { pt.PictureId, pt.TagName }).IsUnique();
 
                 entity.HasOne(pt => pt.Picture)
                       .WithMany(p => p.PictureTags)
                       .HasForeignKey(pt => pt.PictureId)
-                      .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(pt => pt.Tag)
-                      .WithMany(t => t.PictureTags)
-                      .HasForeignKey(pt => pt.TagId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
         }

@@ -20,9 +20,9 @@ public interface IMovieService
     Task<List<Movie>> GetAllMoviesAsync();
 
     /// <summary>
-    /// 获取全部标签，用于首页标签筛选。
+    /// 获取全部电影标签名（DISTINCT），用于首页标签筛选。
     /// </summary>
-    Task<List<Tag>> GetAllTagsAsync();
+    Task<List<string>> GetAllTagsAsync();
 
     /// <summary>
     /// 给电影添加标签（已存在则忽略），如果 Tag 表里没有该名称则先创建。

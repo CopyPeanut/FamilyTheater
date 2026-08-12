@@ -42,7 +42,7 @@ public class Picture
     public DateTime LastScannedAt { get; set; }
 
     /// <summary>
-    /// 多对多导航属性。
+    /// 该图片的所有标签关联。
     /// </summary>
     public List<PictureTag> PictureTags { get; set; } = new();
 }

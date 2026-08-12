@@ -47,12 +47,9 @@ public class PictureService : IPictureService
         // 一次性加载已有 Picture（按 FilePath 索引）
         var existingPictures = await _db.Pictures
             .Include(p => p.PictureTags)
-                .ThenInclude(pt => pt.Tag)
             .ToDictionaryAsync(p => p.FilePath, p => p, StringComparer.OrdinalIgnoreCase);
 
-        // 一次性加载已有 Tag（按 Name 索引）
-        var existingTags = await _db.Tags
-            .ToDictionaryAsync(t => t.Name, t => t, StringComparer.OrdinalIgnoreCase);
+        // 标签直接存为 PictureTag.TagName，无需独立 Tag 表
 
         foreach (var subDir in subDirs)
         {
@@ -75,13 +72,7 @@ public class PictureService : IPictureService
                 continue;
             }
 
-            // 确保标签存在
-            if (!existingTags.TryGetValue(tagName, out var tag))
-            {
-                tag = new Tag { Name = tagName };
-                _db.Tags.Add(tag);
-                existingTags[tagName] = tag;
-            }
+            // 标签名直接写入 PictureTag，无需 Tag 表
 
             foreach (var imageFile in imageFiles)
             {
@@ -97,9 +88,9 @@ public class PictureService : IPictureService
 
                     // 同步标签（确保标签关联存在）
                     if (!picture.PictureTags.Any(pt =>
-                        pt.Tag.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
+                        pt.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        picture.PictureTags.Add(new PictureTag { Picture = picture, Tag = tag });
+                        picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = tagName });
                     }
                     result.Updated++;
                 }
@@ -115,7 +106,7 @@ public class PictureService : IPictureService
                         LastScannedAt = DateTime.UtcNow
                     };
 
-                    newPicture.PictureTags.Add(new PictureTag { Picture = newPicture, Tag = tag });
+                    newPicture.PictureTags.Add(new PictureTag { Picture = newPicture, TagName = tagName });
 
                     _db.Pictures.Add(newPicture);
                     existingPictures[imageFile] = newPicture;
@@ -132,75 +123,63 @@ public class PictureService : IPictureService
     {
         return await _db.Pictures
             .Include(p => p.PictureTags)
-                .ThenInclude(pt => pt.Tag)
             .AsNoTracking()
             .ToListAsync();
     }
 
-    public async Task<List<Tag>> GetAllTagsAsync()
-    {
-        // 只返回被图片使用过的标签
-        return await _db.Tags
-            .Where(t => t.PictureTags.Any())
-            .OrderBy(t => t.Name)
-            .AsNoTracking()
-            .ToListAsync();
-    }
+    public async Task<List<string>> GetAllTagsAsync()
+        {
+            return await _db.PictureTags
+                .Select(pt => pt.TagName)
+                .Distinct()
+                .OrderBy(name => name)
+                .AsNoTracking()
+                .ToListAsync();
+        }
 
-    public async Task<Picture?> GetPictureByIdAsync(int pictureId)
+        public async Task<Picture?> GetPictureByIdAsync(int pictureId)
     {
         return await _db.Pictures
             .Include(p => p.PictureTags)
-                .ThenInclude(pt => pt.Tag)
             .FirstOrDefaultAsync(p => p.Id == pictureId);
     }
 
     public async Task AddTagToPictureAsync(int pictureId, string tagName)
-    {
-        var name = tagName.Trim();
-        if (string.IsNullOrEmpty(name))
-            return;
-
-        var picture = await _db.Pictures
-            .Include(p => p.PictureTags)
-                .ThenInclude(pt => pt.Tag)
-            .FirstOrDefaultAsync(p => p.Id == pictureId);
-        if (picture == null)
-            return;
-
-        // 已有该标签则跳过
-        if (picture.PictureTags.Any(pt =>
-            pt.Tag.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-            return;
-
-        // 查找或创建 Tag
-        var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Name == name);
-        if (tag == null)
         {
-            tag = new Tag { Name = name };
-            _db.Tags.Add(tag);
+            var name = tagName.Trim();
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            var picture = await _db.Pictures
+                .Include(p => p.PictureTags)
+                .FirstOrDefaultAsync(p => p.Id == pictureId);
+            if (picture == null)
+                return;
+
+            // 已有该标签则跳过
+            if (picture.PictureTags.Any(pt =>
+                pt.TagName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                return;
+
+            picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = name });
+            await _db.SaveChangesAsync();
         }
 
-        picture.PictureTags.Add(new PictureTag { Picture = picture, Tag = tag });
-        await _db.SaveChangesAsync();
-    }
+        public async Task RemoveTagFromPictureAsync(int pictureId, string tagName)
+        {
+            var name = tagName.Trim();
+            if (string.IsNullOrEmpty(name))
+                return;
 
-    public async Task RemoveTagFromPictureAsync(int pictureId, string tagName)
-    {
-        var name = tagName.Trim();
-        if (string.IsNullOrEmpty(name))
-            return;
+            var link = await _db.PictureTags
+                .FirstOrDefaultAsync(pt =>
+                    pt.PictureId == pictureId &&
+                    pt.TagName == name);
+            if (link == null)
+                return;
 
-        var link = await _db.PictureTags
-            .Include(pt => pt.Tag)
-            .FirstOrDefaultAsync(pt =>
-                pt.PictureId == pictureId &&
-                pt.Tag.Name == name);
-        if (link == null)
-            return;
-
-        _db.PictureTags.Remove(link);
-        await _db.SaveChangesAsync();
+            _db.PictureTags.Remove(link);
+            await _db.SaveChangesAsync();
         }
 
         /// <summary>

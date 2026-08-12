@@ -54,9 +54,7 @@ public class MovieService : IMovieService
             .Include(m => m.MovieTags)
             .ToDictionaryAsync(m => m.FolderPath, m => m, StringComparer.OrdinalIgnoreCase);
 
-        // 一次性加载已有 Tag（按 Name 索引），避免重复创建
-        var existingTags = await _db.Tags
-            .ToDictionaryAsync(t => t.Name, t => t, StringComparer.OrdinalIgnoreCase);
+        // 标签直接存为 MovieTag.TagName，无需独立 Tag 表
 
         foreach (var folder in leafFolders)
         {
@@ -86,7 +84,7 @@ public class MovieService : IMovieService
                 movie.LastScannedAt = DateTime.UtcNow;
 
                 // 同步标签（保留已有的，添加新的）
-                SyncTags(movie, tags, existingTags);
+                SyncTags(movie, tags);
                 result.Updated++;
             }
             else
@@ -102,16 +100,10 @@ public class MovieService : IMovieService
                     LastScannedAt = DateTime.UtcNow
                 };
 
-                // 附加标签
+                // 附加标签（直接写 TagName，无需 Tag 表）
                 foreach (var tagName in tags)
                 {
-                    if (!existingTags.TryGetValue(tagName, out var tag))
-                    {
-                        tag = new Tag { Name = tagName };
-                        _db.Tags.Add(tag);
-                        existingTags[tagName] = tag;
-                    }
-                    newMovie.MovieTags.Add(new MovieTag { Movie = newMovie, Tag = tag });
+                    newMovie.MovieTags.Add(new MovieTag { Movie = newMovie, TagName = tagName });
                 }
 
                 _db.Movies.Add(newMovie);
@@ -128,24 +120,24 @@ public class MovieService : IMovieService
     {
         return await _db.Movies
             .Include(m => m.MovieTags)
-                .ThenInclude(mt => mt.Tag)
             .AsNoTracking()
             .ToListAsync();
     }
 
-    public async Task<List<Tag>> GetAllTagsAsync()
-    {
-        return await _db.Tags
-            .OrderBy(t => t.Name)
-            .AsNoTracking()
-            .ToListAsync();
-    }
+    public async Task<List<string>> GetAllTagsAsync()
+        {
+            return await _db.MovieTags
+                .Select(mt => mt.TagName)
+                .Distinct()
+                .OrderBy(name => name)
+                .AsNoTracking()
+                .ToListAsync();
+        }
 
-    public async Task<Movie?> GetMovieByIdAsync(int movieId)
+        public async Task<Movie?> GetMovieByIdAsync(int movieId)
     {
         return await _db.Movies
             .Include(m => m.MovieTags)
-                .ThenInclude(mt => mt.Tag)
             .FirstOrDefaultAsync(m => m.Id == movieId);
     }
     public async Task<Movie?> RenameMovieAsync(int movieId, string newTitle)
@@ -156,7 +148,6 @@ public class MovieService : IMovieService
 
         var movie = await _db.Movies
             .Include(m => m.MovieTags)
-                .ThenInclude(mt => mt.Tag)
             .FirstOrDefaultAsync(m => m.Id == movieId);
         if (movie == null)
             return null;
@@ -206,54 +197,44 @@ public class MovieService : IMovieService
     }
 
     public async Task AddTagToMovieAsync(int movieId, string tagName)
-    {
-        var name = tagName.Trim();
-        if (string.IsNullOrEmpty(name))
-            return;
-
-        var movie = await _db.Movies
-            .Include(m => m.MovieTags)
-                .ThenInclude(mt => mt.Tag)
-            .FirstOrDefaultAsync(m => m.Id == movieId);
-        if (movie == null)
-            return;
-
-        // 已有该标签则跳过
-        if (movie.MovieTags.Any(mt =>
-            mt.Tag.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-            return;
-
-        // 查找或创建 Tag
-        var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Name == name);
-        if (tag == null)
         {
-            tag = new Tag { Name = name };
-            _db.Tags.Add(tag);
+            var name = tagName.Trim();
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            var movie = await _db.Movies
+                .Include(m => m.MovieTags)
+                .FirstOrDefaultAsync(m => m.Id == movieId);
+            if (movie == null)
+                return;
+
+            // 已有该标签则跳过
+            if (movie.MovieTags.Any(mt =>
+                mt.TagName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                return;
+
+            movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = name });
+            await _db.SaveChangesAsync();
         }
 
-        movie.MovieTags.Add(new MovieTag { Movie = movie, Tag = tag });
-        await _db.SaveChangesAsync();
-    }
+        public async Task RemoveTagFromMovieAsync(int movieId, string tagName)
+        {
+            var name = tagName.Trim();
+            if (string.IsNullOrEmpty(name))
+                return;
 
-    public async Task RemoveTagFromMovieAsync(int movieId, string tagName)
-    {
-        var name = tagName.Trim();
-        if (string.IsNullOrEmpty(name))
-            return;
+            var link = await _db.MovieTags
+                .FirstOrDefaultAsync(mt =>
+                    mt.MovieId == movieId &&
+                    mt.TagName == name);
+            if (link == null)
+                return;
 
-        var link = await _db.MovieTags
-            .Include(mt => mt.Tag)
-            .FirstOrDefaultAsync(mt =>
-                mt.MovieId == movieId &&
-                mt.Tag.Name == name);
-        if (link == null)
-            return;
+            _db.MovieTags.Remove(link);
+            await _db.SaveChangesAsync();
+        }
 
-        _db.MovieTags.Remove(link);
-        await _db.SaveChangesAsync();
-    }
-
-    // ────────────────────────── 私有方法 ──────────────────────────
+        // ────────────────────────── 私有方法 ──────────────────────────
 
     /// <summary>
     /// 递归找出所有叶子文件夹（不含子目录的文件夹）。
@@ -400,26 +381,19 @@ public class MovieService : IMovieService
     /// <summary>
     /// 同步已有 Movie 的标签：保留已有的，添加新的。
     /// </summary>
-    private void SyncTags(Movie movie, List<string> tagNames, Dictionary<string, Tag> existingTags)
-    {
-        var currentTagNames = movie.MovieTags
-            .Select(mt => mt.Tag.Name)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var tagName in tagNames)
+    private void SyncTags(Movie movie, List<string> tagNames)
         {
-            if (currentTagNames.Contains(tagName))
-                continue; // 已有该标签
+            var currentTagNames = movie.MovieTags
+                .Select(mt => mt.TagName)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            if (!existingTags.TryGetValue(tagName, out var tag))
+            foreach (var tagName in tagNames)
             {
-                tag = new Tag { Name = tagName };
-                _db.Tags.Add(tag);
-                existingTags[tagName] = tag;
-            }
+                if (currentTagNames.Contains(tagName))
+                    continue;
 
-            movie.MovieTags.Add(new MovieTag { Movie = movie, Tag = tag });
-        }
+                movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = tagName });
+            }
         }
 
         /// <summary>

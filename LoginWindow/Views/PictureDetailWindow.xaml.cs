@@ -15,7 +15,7 @@ namespace LoginWindow.Views
         private readonly Picture _picture;
         private readonly IPictureService _pictureService;
         private readonly ObservableCollection<DetailTagViewModel> _allTags = new();
-        private readonly ObservableCollection<Tag> _pictureTags = new();
+        private readonly ObservableCollection<string> _pictureTags = new();
 
         public PictureDetailWindow(Picture picture, IPictureService pictureService)
         {
@@ -48,7 +48,7 @@ namespace LoginWindow.Views
             if (picture.PictureTags != null)
             {
                 foreach (var pt in picture.PictureTags)
-                    _pictureTags.Add(pt.Tag);
+                    _pictureTags.Add(pt.TagName);
             }
             PictureTagsList.ItemsSource = _pictureTags;
 
@@ -65,15 +65,15 @@ namespace LoginWindow.Views
             if (freshPicture?.PictureTags != null)
             {
                 foreach (var pt in freshPicture.PictureTags)
-                    _pictureTags.Add(pt.Tag);
+                    _pictureTags.Add(pt.TagName);
             }
 
             _allTags.Clear();
-            foreach (var tag in tags)
+            foreach (var name in tags)
             {
-                var vm = new DetailTagViewModel(tag.Name);
+                var vm = new DetailTagViewModel(name);
                 vm.IsSelected = _pictureTags.Any(t =>
-                    t.Name.Equals(tag.Name, StringComparison.OrdinalIgnoreCase));
+                    t.Equals(name, StringComparison.OrdinalIgnoreCase));
                 _allTags.Add(vm);
             }
         }
@@ -90,14 +90,14 @@ namespace LoginWindow.Views
                 if (tagVm.IsSelected)
                 {
                     await _pictureService.AddTagToPictureAsync(_picture.Id, tagVm.Name);
-                    if (!_pictureTags.Any(t => t.Name.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase)))
-                        _pictureTags.Add(new Tag { Name = tagVm.Name });
+                    if (!_pictureTags.Any(t => t.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase)))
+                        _pictureTags.Add(tagVm.Name);
                 }
                 else
                 {
                     await _pictureService.RemoveTagFromPictureAsync(_picture.Id, tagVm.Name);
                     var toRemove = _pictureTags.FirstOrDefault(t =>
-                        t.Name.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase));
+                        t.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase));
                     if (toRemove != null)
                         _pictureTags.Remove(toRemove);
                 }
@@ -109,14 +109,14 @@ namespace LoginWindow.Views
         /// </summary>
         private async void RemoveTag_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is System.Windows.Controls.Button btn && btn.DataContext is Tag tag)
+            if (sender is System.Windows.Controls.Button btn && btn.DataContext is string tagName)
             {
-                await _pictureService.RemoveTagFromPictureAsync(_picture.Id, tag.Name);
+                await _pictureService.RemoveTagFromPictureAsync(_picture.Id, tagName);
 
-                _pictureTags.Remove(tag);
+                _pictureTags.Remove(tagName);
 
                 var vm = _allTags.FirstOrDefault(t =>
-                    t.Name.Equals(tag.Name, StringComparison.OrdinalIgnoreCase));
+                    t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
                 if (vm != null)
                     vm.IsSelected = false;
             }
@@ -145,8 +145,8 @@ namespace LoginWindow.Views
 
             await _pictureService.AddTagToPictureAsync(_picture.Id, name);
 
-            if (!_pictureTags.Any(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-                _pictureTags.Add(new Tag { Name = name });
+            if (!_pictureTags.Any(t => t.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                _pictureTags.Add(name);
 
             var vm = _allTags.FirstOrDefault(t =>
                 t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));

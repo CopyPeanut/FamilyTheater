@@ -189,8 +189,8 @@ namespace LoginWindow.Models
             // 加载标签并渲染为方块
             var tags = await _movieService.GetAllTagsAsync();
             Tags.Clear();
-            foreach (var t in tags)
-                Tags.Add(new TagViewModel(t.Name));
+            foreach (var name in tags)
+                Tags.Add(new TagViewModel(name));
 
             // 重置筛选并刷新
             SearchText = string.Empty;
@@ -210,8 +210,8 @@ namespace LoginWindow.Models
             // 加载图片标签并渲染为方块
             var tags = await _pictureService.GetAllTagsAsync();
             Tags.Clear();
-            foreach (var t in tags)
-                Tags.Add(new TagViewModel(t.Name));
+            foreach (var name in tags)
+                Tags.Add(new TagViewModel(name));
 
             // 重置筛选并刷新
             SearchText = string.Empty;
@@ -249,8 +249,7 @@ namespace LoginWindow.Models
                 filtered = filtered.Where(m =>
                     m.MovieTags != null &&
                     m.MovieTags.Any(mt =>
-                        mt.Tag != null &&
-                        selectedTagNames.Contains(mt.Tag.Name)));
+                        selectedTagNames.Contains(mt.TagName)));
             }
 
             // 搜索筛选：标题包含搜索文本（忽略大小写）
@@ -289,8 +288,7 @@ namespace LoginWindow.Models
                 filtered = filtered.Where(p =>
                     p.PictureTags != null &&
                     p.PictureTags.Any(pt =>
-                        pt.Tag != null &&
-                        selectedTagNames.Contains(pt.Tag.Name)));
+                        selectedTagNames.Contains(pt.TagName)));
             }
 
             // 搜索筛选：文件名包含搜索文本（忽略大小写）

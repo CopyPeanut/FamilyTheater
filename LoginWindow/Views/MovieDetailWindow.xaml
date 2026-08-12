@@ -59,7 +59,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Content="{Binding Name}" Click="RemoveTag_Click"
+                            <Button Content="{Binding}" Click="RemoveTag_Click"
                                     Margin="0,0,8,6" Padding="10,4" FontSize="13"
                                     Cursor="Hand" BorderThickness="0"
                                     Background="#f1b054" Foreground="#1E1E1D"/>

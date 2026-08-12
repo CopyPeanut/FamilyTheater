@@ -30,7 +30,7 @@ namespace LoginWindow.Views
         private readonly Movie _movie;
         private readonly IMovieService _movieService;
         private readonly ObservableCollection<DetailTagViewModel> _allTags = new();
-        private readonly ObservableCollection<Tag> _movieTags = new();
+        private readonly ObservableCollection<string> _movieTags = new();
 
         public MovieDetailWindow(Movie movie, IMovieService movieService)
         {
@@ -63,7 +63,7 @@ namespace LoginWindow.Views
             if (movie.MovieTags != null)
             {
                 foreach (var mt in movie.MovieTags)
-                    _movieTags.Add(mt.Tag);
+                    _movieTags.Add(mt.TagName);
             }
             MovieTagsList.ItemsSource = _movieTags;
 
@@ -80,15 +80,15 @@ namespace LoginWindow.Views
             if (freshMovie?.MovieTags != null)
             {
                 foreach (var mt in freshMovie.MovieTags)
-                    _movieTags.Add(mt.Tag);
+                    _movieTags.Add(mt.TagName);
             }
 
             _allTags.Clear();
-            foreach (var tag in tags)
+            foreach (var name in tags)
             {
-                var vm = new DetailTagViewModel(tag.Name);
+                var vm = new DetailTagViewModel(name);
                 vm.IsSelected = _movieTags.Any(t =>
-                    t.Name.Equals(tag.Name, StringComparison.OrdinalIgnoreCase));
+                    t.Equals(name, StringComparison.OrdinalIgnoreCase));
                 _allTags.Add(vm);
             }
         }
@@ -197,14 +197,14 @@ namespace LoginWindow.Views
                 if (tagVm.IsSelected)
                 {
                     await _movieService.AddTagToMovieAsync(_movie.Id, tagVm.Name);
-                    if (!_movieTags.Any(t => t.Name.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase)))
-                        _movieTags.Add(new Tag { Name = tagVm.Name });
+                    if (!_movieTags.Any(t => t.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase)))
+                        _movieTags.Add(tagVm.Name);
                 }
                 else
                 {
                     await _movieService.RemoveTagFromMovieAsync(_movie.Id, tagVm.Name);
                     var toRemove = _movieTags.FirstOrDefault(t =>
-                        t.Name.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase));
+                        t.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase));
                     if (toRemove != null)
                         _movieTags.Remove(toRemove);
                 }
@@ -216,14 +216,14 @@ namespace LoginWindow.Views
         /// </summary>
         private async void RemoveTag_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is System.Windows.Controls.Button btn && btn.DataContext is Tag tag)
+            if (sender is System.Windows.Controls.Button btn && btn.DataContext is string tagName)
             {
-                await _movieService.RemoveTagFromMovieAsync(_movie.Id, tag.Name);
+                await _movieService.RemoveTagFromMovieAsync(_movie.Id, tagName);
 
-                _movieTags.Remove(tag);
+                _movieTags.Remove(tagName);
 
                 var vm = _allTags.FirstOrDefault(t =>
-                    t.Name.Equals(tag.Name, StringComparison.OrdinalIgnoreCase));
+                    t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
                 if (vm != null)
                     vm.IsSelected = false;
             }
@@ -252,8 +252,8 @@ namespace LoginWindow.Views
 
             await _movieService.AddTagToMovieAsync(_movie.Id, name);
 
-            if (!_movieTags.Any(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-                _movieTags.Add(new Tag { Name = name });
+            if (!_movieTags.Any(t => t.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                _movieTags.Add(name);
 
             var vm = _allTags.FirstOrDefault(t =>
                 t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));

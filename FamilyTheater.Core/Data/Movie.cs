@@ -62,7 +62,7 @@ public class Movie
     public DateTime LastScannedAt { get; set; }
 
     /// <summary>
-    /// 多对多导航属性。
+    /// 该电影的所有标签关联。
     /// </summary>
     public List<MovieTag> MovieTags { get; set; } = new();
 }
