@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using CoreLogger = FamilyTheater.Core.Logger.Logger;
 
 namespace FamilyTheater.Core.Services;
 
@@ -30,7 +31,12 @@ public class PictureService : IPictureService
 
         var rootPath = await _settingService.GetPictureRootPathAsync();
         if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
+        {
+            CoreLogger.Warn($"图片库扫描跳过：图片根目录无效。RootPath={rootPath}");
             return result;
+        }
+
+        CoreLogger.Info($"开始扫描图片库：{rootPath}");
 
         // 遍历根目录下的子文件夹（仅一层）
         string[] subDirs;
@@ -38,11 +44,22 @@ public class PictureService : IPictureService
         {
             subDirs = Directory.GetDirectories(rootPath);
         }
-        catch (UnauthorizedAccessException) { return result; }
-        catch (DirectoryNotFoundException) { return result; }
+        catch (UnauthorizedAccessException ex)
+        {
+            CoreLogger.Warn($"无权限访问图片根目录：{rootPath}", ex);
+            return result;
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            CoreLogger.Warn($"图片根目录不存在：{rootPath}", ex);
+            return result;
+        }
 
         if (subDirs.Length == 0)
+        {
+            CoreLogger.Info($"图片库扫描结束：未找到子文件夹。RootPath={rootPath}");
             return result;
+        }
 
         // 一次性加载已有 Picture（按 FilePath 索引）
         var existingPictures = await _db.Pictures
@@ -63,8 +80,16 @@ public class PictureService : IPictureService
                     .Where(f => ImageExtensions.Contains(Path.GetExtension(f)))
                     .ToList();
             }
-            catch (UnauthorizedAccessException) { continue; }
-            catch (DirectoryNotFoundException) { continue; }
+            catch (UnauthorizedAccessException ex)
+            {
+                CoreLogger.Warn($"无权限读取图片文件夹：{subDir}", ex);
+                continue;
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                CoreLogger.Warn($"图片文件夹不存在：{subDir}", ex);
+                continue;
+            }
 
             if (imageFiles.Count == 0)
             {
@@ -116,6 +141,7 @@ public class PictureService : IPictureService
         }
 
         await _db.SaveChangesAsync();
+        CoreLogger.Info($"图片库扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
         return result;
     }
 

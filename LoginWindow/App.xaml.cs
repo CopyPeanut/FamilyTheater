@@ -1,6 +1,7 @@
 using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Helper;
 using FamilyTheater.Core.Services;
+using CoreLogger = FamilyTheater.Core.Logger.Logger;
 using LoginWindow.Models;
 using LoginWindow.Views;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,24 @@ namespace LoginWindow
         public static IHost AppHost { get; private set; } = null!;
         public App()
         {
-           
+            DispatcherUnhandledException += (_, args) =>
+            {
+                CoreLogger.Fatal("UI 线程发生未处理异常。", args.Exception);
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception exception)
+                    CoreLogger.Fatal("应用程序域发生未处理异常。", exception);
+                else
+                    CoreLogger.Fatal($"应用程序域发生未处理异常：{args.ExceptionObject}");
+            };
+
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                CoreLogger.Error("后台任务发生未观察异常。", args.Exception);
+                args.SetObserved();
+            };
         }
         protected override async void OnStartup(StartupEventArgs e)
         {
@@ -29,11 +47,18 @@ namespace LoginWindow
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "FamilyTheater");
             Directory.CreateDirectory(appDataDir);
+
+            CoreLogger.Configure(Path.Combine(appDataDir, "logs"));
+            CoreLogger.Info("FamilyTheater 启动。");
+
             var dbPath = Path.Combine(appDataDir, "FamilyTheater. db");
             // 一次性迁移：如果AppData 里没有数据库但程序目录下有旧库，自动复制过去
             var oldDbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FamilyTheater. db");
             if (!File.Exists(dbPath) && File.Exists(oldDbPath))
+            {
                 File.Copy(oldDbPath, dbPath, overwrite: false);
+                CoreLogger.Info($"已迁移旧数据库：{oldDbPath} -> {dbPath}");
+            }
 
             AppHost = Host.CreateDefaultBuilder()
                 .ConfigureServices((context, services) =>
@@ -95,6 +120,7 @@ namespace LoginWindow
 
         protected override void OnExit(ExitEventArgs e)
         {
+            CoreLogger.Info("FamilyTheater 退出。");
             AppHost?.Dispose();
             base.OnExit(e);
         }

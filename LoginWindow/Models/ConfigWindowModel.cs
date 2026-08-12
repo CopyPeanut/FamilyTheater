@@ -5,6 +5,7 @@ using System;
 using System.Reactive;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using CoreLogger = FamilyTheater.Core.Logger.Logger;
 
 namespace LoginWindow.Models
 {
@@ -101,6 +102,7 @@ namespace LoginWindow.Models
             }
             catch (Exception ex)
             {
+                CoreLogger.Error("保存配置并扫描媒体库失败。", ex);
                 StatusMessage = $"保存失败：{ex.Message}";
             }
             finally

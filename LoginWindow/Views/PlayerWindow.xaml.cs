@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using CoreLogger = FamilyTheater.Core.Logger.Logger;
 
 namespace LoginWindow.Views
 {
@@ -49,6 +50,7 @@ namespace LoginWindow.Views
         private void Player_MediaFailed(object sender, ExceptionRoutedEventArgs e)
         {
             var errorMsg = e.ErrorException?.Message ?? "未知错误";
+            CoreLogger.Error($"视频播放失败：{_videoPath}", e.ErrorException);
             CustomMessageBox.Show($"无法播放该视频：{errorMsg}\n\n路径：{_videoPath}\n\n可能原因：\n1. 视频编码不被 Windows Media Player 支持（如 H.265/HEVC）\n2. 文件损坏或路径含特殊字符\n3. 系统缺少对应解码器");
             Close();
         }

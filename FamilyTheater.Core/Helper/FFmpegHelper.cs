@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using CoreLogger = FamilyTheater.Core.Logger.Logger;
 
 namespace FamilyTheater.Core.Helper
 {
@@ -42,6 +43,7 @@ namespace FamilyTheater.Core.Helper
                         BinaryFolder = BinDir
                     });
                     _available = true;
+                    CoreLogger.Info($"FFmpeg 已就绪：{FfmpegPath}");
                     return Task.FromResult(true);
                 }
 
@@ -50,15 +52,18 @@ namespace FamilyTheater.Core.Helper
                 {
                     FFMpegCore.GlobalFFOptions.Configure(new FFMpegCore.FFOptions());
                     _available = true;
+                    CoreLogger.Info("FFmpeg 已从系统 PATH 中找到。");
                     return Task.FromResult(true);
                 }
 
                 _available = false;
+                CoreLogger.Warn($"未找到 FFmpeg：{FfmpegPath}");
                 return Task.FromResult(false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 _available = false;
+                CoreLogger.Error("检查 FFmpeg 可用性失败。", ex);
                 return Task.FromResult(false);
             }
         }
@@ -83,7 +88,11 @@ namespace FamilyTheater.Core.Helper
                 }
                 return false;
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                CoreLogger.Warn($"检查 PATH 中的 {exeName} 失败。", ex);
+                return false;
+            }
         }
     }
 }

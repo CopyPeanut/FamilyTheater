@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FFMpegCore;
 using FamilyTheater.Core.Helper;
 using System.Drawing;
+using CoreLogger = FamilyTheater.Core.Logger.Logger;
 
 namespace FamilyTheater.Core.Services;
 
@@ -42,12 +43,20 @@ public class MovieService : IMovieService
 
         var rootPath = await _settingService.GetMediaRootPathAsync();
         if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
+        {
+            CoreLogger.Warn($"电影库扫描跳过：媒体根目录无效。RootPath={rootPath}");
             return result;
+        }
+
+        CoreLogger.Info($"开始扫描电影库：{rootPath}");
 
         // 找出所有叶子文件夹（不含子目录的文件夹）
         var leafFolders = FindLeafFolders(rootPath);
         if (leafFolders.Count == 0)
+        {
+            CoreLogger.Info($"电影库扫描结束：未找到叶子文件夹。RootPath={rootPath}");
             return result;
+        }
 
         // 一次性加载已有 Movie（按 FolderPath 索引），避免逐个查询
         var existingMovies = await _db.Movies
@@ -113,6 +122,7 @@ public class MovieService : IMovieService
         }
 
         await _db.SaveChangesAsync();
+        CoreLogger.Info($"电影库扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
         return result;
     }
 
@@ -253,8 +263,16 @@ public class MovieService : IMovieService
         {
             subDirs = Directory.GetDirectories(current);
         }
-        catch (UnauthorizedAccessException) { return; }
-        catch (DirectoryNotFoundException) { return; }
+        catch (UnauthorizedAccessException ex)
+        {
+            CoreLogger.Warn($"无权限访问电影目录：{current}", ex);
+            return;
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            CoreLogger.Warn($"电影目录不存在：{current}", ex);
+            return;
+        }
 
         if (subDirs.Length == 0)
         {
@@ -278,8 +296,16 @@ public class MovieService : IMovieService
             return Directory.EnumerateFiles(folder)
                 .FirstOrDefault(f => VideoExtensions.Contains(Path.GetExtension(f)));
         }
-        catch (UnauthorizedAccessException) { return null; }
-        catch (DirectoryNotFoundException) { return null; }
+        catch (UnauthorizedAccessException ex)
+        {
+            CoreLogger.Warn($"无权限读取电影文件夹：{folder}", ex);
+            return null;
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            CoreLogger.Warn($"电影文件夹不存在：{folder}", ex);
+            return null;
+        }
     }
 
     /// <summary>
@@ -294,8 +320,16 @@ public class MovieService : IMovieService
                 .Where(f => PosterExtensions.Contains(Path.GetExtension(f)))
                 .ToList();
         }
-        catch (UnauthorizedAccessException) { return null; }
-        catch (DirectoryNotFoundException) { return null; }
+        catch (UnauthorizedAccessException ex)
+        {
+            CoreLogger.Warn($"无权限读取电影海报文件夹：{folder}", ex);
+            return null;
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            CoreLogger.Warn($"电影海报文件夹不存在：{folder}", ex);
+            return null;
+        }
 
         if (images.Count == 0)
             return null;
@@ -323,7 +357,10 @@ public class MovieService : IMovieService
         try
         {
             if (!await FFmpegHelper.EnsureAvailableAsync())
+            {
+                CoreLogger.Warn($"无法提取电影海报：FFmpeg 不可用。VideoPath={videoPath}");
                 return null;
+            }
 
             var posterPath = Path.Combine(folder, "poster_auto.jpg");
 
@@ -339,15 +376,26 @@ public class MovieService : IMovieService
                 RedirectStandardOutput = true,
             };
             using var proc = System.Diagnostics.Process.Start(psi);
-            if (proc == null) return null;
+            if (proc == null)
+            {
+                CoreLogger.Warn($"无法启动 FFmpeg 提取电影海报。VideoPath={videoPath}");
+                return null;
+            }
             await proc.WaitForExitAsync();
-            proc.StandardError.ReadToEnd();
-            proc.StandardOutput.ReadToEnd();
+            var error = proc.StandardError.ReadToEnd();
+            var output = proc.StandardOutput.ReadToEnd();
+
+            if (proc.ExitCode != 0)
+            {
+                CoreLogger.Warn($"FFmpeg 提取电影海报失败。ExitCode={proc.ExitCode}，VideoPath={videoPath}，Error={error}，Output={output}");
+                return null;
+            }
 
             return File.Exists(posterPath) ? posterPath : null;
         }
-        catch
+        catch (Exception ex)
         {
+            CoreLogger.Warn($"提取电影海报发生异常。VideoPath={videoPath}", ex);
             return null;
         }
     }

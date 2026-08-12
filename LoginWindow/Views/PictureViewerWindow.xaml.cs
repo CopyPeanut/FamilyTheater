@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using CoreLogger = FamilyTheater.Core.Logger.Logger;
 
 namespace LoginWindow.Views
 {
@@ -19,8 +20,9 @@ namespace LoginWindow.Views
                     ImageViewer.Source = new BitmapImage(new Uri(imagePath, UriKind.Absolute));
                     FileNameDisplay.Text = Path.GetFileName(imagePath);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    CoreLogger.Warn($"加载图片失败：{imagePath}", ex);
                     CustomMessageBox.Show($"无法加载图片：{imagePath}");
                 }
             }
