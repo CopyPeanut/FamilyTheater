@@ -269,5 +269,15 @@ namespace LoginWindow.Views
 
             NewTagInput.Text = string.Empty;
         }
+
+        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                Close();
+                e.Handled = true;
+            }
+            base.OnKeyDown(e);
+        }
     }
 }

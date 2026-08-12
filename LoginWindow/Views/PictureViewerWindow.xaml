@@ -1,7 +1,7 @@
 <Window x:Class="LoginWindow.Views.PictureViewerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="图片预览" Background="#1E1E1D" WindowState="Maximized"
+        Title="图片预览" Background="#1E1E1D" Width="1800" Height="1000"
         WindowStyle="SingleBorderWindow" ResizeMode="CanResize">
     <Grid>
         <Grid.RowDefinitions>
