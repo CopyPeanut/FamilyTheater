@@ -1,40 +1,33 @@
 using FamilyTheater.Core.Data;
-using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using FFMpegCore;
 using FamilyTheater.Core.Helper;
-using System.Drawing;
-using CoreLogger = FamilyTheater.Core.Logger.Logger;
+using FamilyTheater.Core.Logger;
+using Microsoft.EntityFrameworkCore;
 
 namespace FamilyTheater.Core.Services;
 
 public class MovieService : IMovieService
 {
-    private readonly AppDbContext _db;
-    private readonly ISettingService _settingService;
-
-    /// <summary>支持的视频扩展名</summary>
     private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".mp4", ".mkv", ".avi", ".wmv", ".flv", ".mov", ".rmvb", ".ts", ".m4v", ".webm"
     };
 
-    /// <summary>支持的海报图片扩展名</summary>
     private static readonly HashSet<string> PosterExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".jpg", ".jpeg", ".png", ".webp", ".bmp"
     };
 
-    /// <summary>海报文件名优先级（不含扩展名），越小越优先</summary>
     private static readonly string[] PosterNamePriority = { "poster", "cover", "folder" };
 
-    public MovieService(AppDbContext db, ISettingService settingService)
+    private readonly AppDbContext _db;
+    private readonly ISettingService _settingService;
+    private readonly IAppLogger _logger;
+
+    public MovieService(AppDbContext db, ISettingService settingService, IAppLogger logger)
     {
         _db = db;
         _settingService = settingService;
+        _logger = logger;
     }
 
     public async Task<ScanResult> ScanLibraryAsync()
@@ -44,61 +37,51 @@ public class MovieService : IMovieService
         var rootPath = await _settingService.GetMediaRootPathAsync();
         if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
         {
-            CoreLogger.Warn($"电影库扫描跳过：媒体根目录无效。RootPath={rootPath}");
+            _logger.Warn($"电影库扫描跳过：媒体根目录无效。RootPath={rootPath}");
             return result;
         }
 
-        CoreLogger.Info($"开始扫描电影库：{rootPath}");
+        _logger.Info($"开始扫描电影库：{rootPath}");
 
-        // 找出所有叶子文件夹（不含子目录的文件夹）
         var leafFolders = FindLeafFolders(rootPath);
         if (leafFolders.Count == 0)
         {
-            CoreLogger.Info($"电影库扫描结束：未找到叶子文件夹。RootPath={rootPath}");
+            _logger.Info($"电影库扫描结束：未找到叶子文件夹。RootPath={rootPath}");
             return result;
         }
 
-        // 一次性加载已有 Movie（按 FolderPath 索引），避免逐个查询
         var existingMovies = await _db.Movies
             .Include(m => m.MovieTags)
             .ToDictionaryAsync(m => m.FolderPath, m => m, StringComparer.OrdinalIgnoreCase);
-
-        // 标签直接存为 MovieTag.TagName，无需独立 Tag 表
 
         foreach (var folder in leafFolders)
         {
             var videoFile = FindVideoFile(folder);
             if (videoFile == null)
             {
-                // 叶子文件夹里没有视频文件，跳过
                 result.Skipped++;
                 continue;
             }
 
             var posterFile = FindPosterFile(folder);
-
-            // 没有海报图片 → 尝试用 FFmpeg 提取视频关键帧
             if (posterFile == null)
             {
                 posterFile = await ExtractPosterFromVideoAsync(videoFile, folder);
             }
+
             var tags = ExtractTagsFromPath(rootPath, folder);
 
             if (existingMovies.TryGetValue(folder, out var movie))
             {
-                // 更新已有记录
                 movie.VideoFilePath = videoFile;
                 movie.PosterPath = posterFile;
                 movie.FileSizeBytes = new FileInfo(videoFile).Length;
                 movie.LastScannedAt = DateTime.UtcNow;
-
-                // 同步标签（保留已有的，添加新的）
                 SyncTags(movie, tags);
                 result.Updated++;
             }
             else
             {
-                // 新增记录
                 var newMovie = new Movie
                 {
                     Title = Path.GetFileName(folder),
@@ -109,7 +92,6 @@ public class MovieService : IMovieService
                     LastScannedAt = DateTime.UtcNow
                 };
 
-                // 附加标签（直接写 TagName，无需 Tag 表）
                 foreach (var tagName in tags)
                 {
                     newMovie.MovieTags.Add(new MovieTag { Movie = newMovie, TagName = tagName });
@@ -122,7 +104,7 @@ public class MovieService : IMovieService
         }
 
         await _db.SaveChangesAsync();
-        CoreLogger.Info($"电影库扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
+        _logger.Info($"电影库扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
         return result;
     }
 
@@ -135,128 +117,162 @@ public class MovieService : IMovieService
     }
 
     public async Task<List<string>> GetAllTagsAsync()
-        {
-            return await _db.MovieTags
-                .Select(mt => mt.TagName)
-                .Distinct()
-                .OrderBy(name => name)
-                .AsNoTracking()
-                .ToListAsync();
-        }
+    {
+        return await _db.MovieTags
+            .Select(mt => mt.TagName)
+            .Distinct()
+            .OrderBy(name => name)
+            .AsNoTracking()
+            .ToListAsync();
+    }
 
-        public async Task<Movie?> GetMovieByIdAsync(int movieId)
+    public async Task<Movie?> GetMovieByIdAsync(int movieId)
     {
         return await _db.Movies
             .Include(m => m.MovieTags)
             .FirstOrDefaultAsync(m => m.Id == movieId);
     }
+
     public async Task<Movie?> RenameMovieAsync(int movieId, string newTitle)
     {
         var title = newTitle.Trim();
         if (string.IsNullOrEmpty(title))
+        {
+            _logger.Warn($"电影重命名失败：新标题为空。MovieId={movieId}");
             return null;
+        }
 
         var movie = await _db.Movies
             .Include(m => m.MovieTags)
             .FirstOrDefaultAsync(m => m.Id == movieId);
         if (movie == null)
+        {
+            _logger.Warn($"电影重命名失败：记录不存在。MovieId={movieId}");
             return null;
+        }
 
-        // 标题没变，直接返回
         if (movie.Title.Equals(title, StringComparison.OrdinalIgnoreCase))
             return movie;
 
         var oldFolderPath = movie.FolderPath;
         var parentDir = Path.GetDirectoryName(oldFolderPath);
         if (string.IsNullOrEmpty(parentDir))
+        {
+            _logger.Warn($"电影重命名失败：无法获取父目录。MovieId={movieId}，FolderPath={oldFolderPath}");
             return null;
+        }
 
         var newFolderPath = Path.Combine(parentDir, title);
-
-        // 目标文件夹已存在且不是自己 → 拒绝
         if (Directory.Exists(newFolderPath) &&
             !string.Equals(newFolderPath, oldFolderPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.Warn($"电影重命名失败：目标文件夹已存在。MovieId={movieId}，TargetPath={newFolderPath}");
             return null;
+        }
 
-        // 重命名物理文件夹
         Directory.Move(oldFolderPath, newFolderPath);
+        _logger.Info($"电影文件夹已重命名：MovieId={movieId}，OldPath={oldFolderPath}，NewPath={newFolderPath}");
 
-        // 更新所有路径
         movie.Title = title;
         movie.FolderPath = newFolderPath;
 
-        // 更新视频文件路径
         if (!string.IsNullOrEmpty(movie.VideoFilePath) &&
             movie.VideoFilePath.StartsWith(oldFolderPath, StringComparison.OrdinalIgnoreCase))
         {
-            movie.VideoFilePath = Path.Combine(newFolderPath,
-                movie.VideoFilePath.Substring(oldFolderPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            movie.VideoFilePath = Path.Combine(
+                newFolderPath,
+                movie.VideoFilePath.Substring(oldFolderPath.Length)
+                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         }
 
-        // 更新海报路径
         if (!string.IsNullOrEmpty(movie.PosterPath) &&
             movie.PosterPath.StartsWith(oldFolderPath, StringComparison.OrdinalIgnoreCase))
         {
-            movie.PosterPath = Path.Combine(newFolderPath,
-                movie.PosterPath.Substring(oldFolderPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            movie.PosterPath = Path.Combine(
+                newFolderPath,
+                movie.PosterPath.Substring(oldFolderPath.Length)
+                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         }
 
         movie.LastScannedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        _logger.Info($"电影记录已重命名：MovieId={movieId}，Title={title}");
         return movie;
     }
 
     public async Task AddTagToMovieAsync(int movieId, string tagName)
+    {
+        var name = tagName.Trim();
+        if (string.IsNullOrEmpty(name))
         {
-            var name = tagName.Trim();
-            if (string.IsNullOrEmpty(name))
-                return;
-
-            var movie = await _db.Movies
-                .Include(m => m.MovieTags)
-                .FirstOrDefaultAsync(m => m.Id == movieId);
-            if (movie == null)
-                return;
-
-            // 已有该标签则跳过
-            if (movie.MovieTags.Any(mt =>
-                mt.TagName.Equals(name, StringComparison.OrdinalIgnoreCase)))
-                return;
-
-            movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = name });
-            await _db.SaveChangesAsync();
+            _logger.Warn($"添加电影标签跳过：标签为空。MovieId={movieId}");
+            return;
         }
 
-        public async Task RemoveTagFromMovieAsync(int movieId, string tagName)
+        var movie = await _db.Movies
+            .Include(m => m.MovieTags)
+            .FirstOrDefaultAsync(m => m.Id == movieId);
+        if (movie == null)
         {
-            var name = tagName.Trim();
-            if (string.IsNullOrEmpty(name))
-                return;
-
-            var link = await _db.MovieTags
-                .FirstOrDefaultAsync(mt =>
-                    mt.MovieId == movieId &&
-                    mt.TagName == name);
-            if (link == null)
-                return;
-
-            _db.MovieTags.Remove(link);
-            await _db.SaveChangesAsync();
+            _logger.Warn($"添加电影标签失败：记录不存在。MovieId={movieId}，Tag={name}");
+            return;
         }
 
-        // ────────────────────────── 私有方法 ──────────────────────────
+        if (movie.MovieTags.Any(mt => mt.TagName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            return;
 
-    /// <summary>
-    /// 递归找出所有叶子文件夹（不含子目录的文件夹）。
-    /// </summary>
-    private static List<string> FindLeafFolders(string root)
+        movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = name });
+        await _db.SaveChangesAsync();
+        _logger.Info($"电影标签已添加：MovieId={movieId}，Tag={name}");
+    }
+
+    public async Task RemoveTagFromMovieAsync(int movieId, string tagName)
+    {
+        var name = tagName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            _logger.Warn($"移除电影标签跳过：标签为空。MovieId={movieId}");
+            return;
+        }
+
+        var link = await _db.MovieTags
+            .FirstOrDefaultAsync(mt => mt.MovieId == movieId && mt.TagName == name);
+        if (link == null)
+        {
+            _logger.Warn($"移除电影标签跳过：标签关系不存在。MovieId={movieId}，Tag={name}");
+            return;
+        }
+
+        _db.MovieTags.Remove(link);
+        await _db.SaveChangesAsync();
+        _logger.Info($"电影标签已移除：MovieId={movieId}，Tag={name}");
+    }
+
+    public async Task DeleteMovieAsync(int movieId)
+    {
+        var movie = await _db.Movies
+            .Include(m => m.MovieTags)
+            .FirstOrDefaultAsync(m => m.Id == movieId);
+        if (movie == null)
+        {
+            _logger.Warn($"删除电影记录跳过：记录不存在。MovieId={movieId}");
+            return;
+        }
+
+        _db.MovieTags.RemoveRange(movie.MovieTags);
+        _db.Movies.Remove(movie);
+        await _db.SaveChangesAsync();
+        _logger.Info($"电影记录已删除：MovieId={movieId}，Title={movie.Title}，FolderPath={movie.FolderPath}");
+    }
+
+    private List<string> FindLeafFolders(string root)
     {
         var result = new List<string>();
         FindLeafFoldersCore(root, result);
         return result;
     }
 
-    private static void FindLeafFoldersCore(string current, List<string> result)
+    private void FindLeafFoldersCore(string current, List<string> result)
     {
         string[] subDirs;
         try
@@ -265,31 +281,26 @@ public class MovieService : IMovieService
         }
         catch (UnauthorizedAccessException ex)
         {
-            CoreLogger.Warn($"无权限访问电影目录：{current}", ex);
+            _logger.Warn($"无权限访问电影目录：{current}", ex);
             return;
         }
         catch (DirectoryNotFoundException ex)
         {
-            CoreLogger.Warn($"电影目录不存在：{current}", ex);
+            _logger.Warn($"电影目录不存在：{current}", ex);
             return;
         }
 
         if (subDirs.Length == 0)
         {
-            // 叶子文件夹
             result.Add(current);
+            return;
         }
-        else
-        {
-            foreach (var sub in subDirs)
-                FindLeafFoldersCore(sub, result);
-        }
+
+        foreach (var sub in subDirs)
+            FindLeafFoldersCore(sub, result);
     }
 
-    /// <summary>
-    /// 在文件夹中找第一个视频文件。
-    /// </summary>
-    private static string? FindVideoFile(string folder)
+    private string? FindVideoFile(string folder)
     {
         try
         {
@@ -298,20 +309,17 @@ public class MovieService : IMovieService
         }
         catch (UnauthorizedAccessException ex)
         {
-            CoreLogger.Warn($"无权限读取电影文件夹：{folder}", ex);
+            _logger.Warn($"无权限读取电影文件夹：{folder}", ex);
             return null;
         }
         catch (DirectoryNotFoundException ex)
         {
-            CoreLogger.Warn($"电影文件夹不存在：{folder}", ex);
+            _logger.Warn($"电影文件夹不存在：{folder}", ex);
             return null;
         }
     }
 
-    /// <summary>
-    /// 在文件夹中找海报图片，优先级：poster/cover/folder > 其余图片。
-    /// </summary>
-    private static string? FindPosterFile(string folder)
+    private string? FindPosterFile(string folder)
     {
         List<string> images;
         try
@@ -322,19 +330,18 @@ public class MovieService : IMovieService
         }
         catch (UnauthorizedAccessException ex)
         {
-            CoreLogger.Warn($"无权限读取电影海报文件夹：{folder}", ex);
+            _logger.Warn($"无权限读取电影海报文件夹：{folder}", ex);
             return null;
         }
         catch (DirectoryNotFoundException ex)
         {
-            CoreLogger.Warn($"电影海报文件夹不存在：{folder}", ex);
+            _logger.Warn($"电影海报文件夹不存在：{folder}", ex);
             return null;
         }
 
         if (images.Count == 0)
             return null;
 
-        // 按优先级匹配文件名（不含扩展名）
         foreach (var priorityName in PosterNamePriority)
         {
             var match = images.FirstOrDefault(f =>
@@ -343,28 +350,20 @@ public class MovieService : IMovieService
                 return match;
         }
 
-        // 没有命名优先项，取第一张图片
         return images[0];
     }
 
-    /// <summary>
-    /// 用 FFmpeg 提取视频第 10 秒的关键帧作为海报，保存为 poster_auto.jpg。
-    /// 需要 ffmpeg.exe（首次使用时 FFmpegHelper 自动下载）。
-    /// 失败返回 null，不影响扫描流程。
-    /// </summary>
     private async Task<string?> ExtractPosterFromVideoAsync(string videoPath, string folder)
     {
         try
         {
-            if (!await FFmpegHelper.EnsureAvailableAsync())
+            if (!await FFmpegHelper.EnsureAvailableAsync(_logger))
             {
-                CoreLogger.Warn($"无法提取电影海报：FFmpeg 不可用。VideoPath={videoPath}");
+                _logger.Warn($"无法提取电影海报：FFmpeg 不可用。VideoPath={videoPath}");
                 return null;
             }
 
             var posterPath = Path.Combine(folder, "poster_auto.jpg");
-
-            // 提取第 10 秒的帧，宽度 200，高度 0 = 按比例
             var args = $"-y -ss 10 -i \"{videoPath}\" -vframes 1 -vf \"scale=1284:-1\" \"{posterPath}\"";
             var psi = new System.Diagnostics.ProcessStartInfo
             {
@@ -373,21 +372,23 @@ public class MovieService : IMovieService
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardError = true,
-                RedirectStandardOutput = true,
+                RedirectStandardOutput = true
             };
+
             using var proc = System.Diagnostics.Process.Start(psi);
             if (proc == null)
             {
-                CoreLogger.Warn($"无法启动 FFmpeg 提取电影海报。VideoPath={videoPath}");
+                _logger.Warn($"无法启动 FFmpeg 提取电影海报。VideoPath={videoPath}");
                 return null;
             }
+
             await proc.WaitForExitAsync();
             var error = proc.StandardError.ReadToEnd();
             var output = proc.StandardOutput.ReadToEnd();
 
             if (proc.ExitCode != 0)
             {
-                CoreLogger.Warn($"FFmpeg 提取电影海报失败。ExitCode={proc.ExitCode}，VideoPath={videoPath}，Error={error}，Output={output}");
+                _logger.Warn($"FFmpeg 提取电影海报失败。ExitCode={proc.ExitCode}，VideoPath={videoPath}，Error={error}，Output={output}");
                 return null;
             }
 
@@ -395,70 +396,43 @@ public class MovieService : IMovieService
         }
         catch (Exception ex)
         {
-            CoreLogger.Warn($"提取电影海报发生异常。VideoPath={videoPath}", ex);
+            _logger.Warn($"提取电影海报发生异常。VideoPath={videoPath}", ex);
             return null;
         }
     }
 
-    /// <summary>
-    /// 从路径中提取标签：取根目录之后的各层文件夹名作为标签。
-    /// 例：root=d:\movie, folder=d:\movie\english\anime\superman → [english, anime, superman]
-    /// 注意：最后一层（电影文件夹名）不作为标签，因为它已被用作 Title。
-    /// </summary>
     private static List<string> ExtractTagsFromPath(string root, string folder)
     {
         var rootUri = new DirectoryInfo(root).FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var folderUri = new DirectoryInfo(folder).FullName;
 
-        // 获取相对路径
         string relative;
         if (folderUri.StartsWith(rootUri, StringComparison.OrdinalIgnoreCase))
             relative = folderUri.Substring(rootUri.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         else
             relative = Path.GetFileName(folder);
 
-        var parts = relative.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
-                                   StringSplitOptions.RemoveEmptyEntries);
+        var parts = relative.Split(
+            new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+            StringSplitOptions.RemoveEmptyEntries);
 
-        // 去掉最后一层（电影文件夹名，已用作 Title），其余作为标签
         return parts.Length > 1
             ? parts.Take(parts.Length - 1).ToList()
             : new List<string>();
     }
 
-    /// <summary>
-    /// 同步已有 Movie 的标签：保留已有的，添加新的。
-    /// </summary>
-    private void SyncTags(Movie movie, List<string> tagNames)
+    private static void SyncTags(Movie movie, List<string> tagNames)
+    {
+        var currentTagNames = movie.MovieTags
+            .Select(mt => mt.TagName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var tagName in tagNames)
         {
-            var currentTagNames = movie.MovieTags
-                .Select(mt => mt.TagName)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (currentTagNames.Contains(tagName))
+                continue;
 
-            foreach (var tagName in tagNames)
-            {
-                if (currentTagNames.Contains(tagName))
-                    continue;
-
-                movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = tagName });
-            }
-        }
-
-        /// <summary>
-        /// 删除电影记录及其所有标签关联（MovieTag），不删除 Tag 记录本身。
-        /// </summary>
-        public async Task DeleteMovieAsync(int movieId)
-        {
-            var movie = await _db.Movies
-                .Include(m => m.MovieTags)
-                .FirstOrDefaultAsync(m => m.Id == movieId);
-            if (movie == null)
-                return;
-
-            // 删除所有标签关联
-            _db.MovieTags.RemoveRange(movie.MovieTags);
-            // 删除电影记录
-            _db.Movies.Remove(movie);
-            await _db.SaveChangesAsync();
+            movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = tagName });
         }
     }
+}

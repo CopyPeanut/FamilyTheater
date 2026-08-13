@@ -1,12 +1,13 @@
 using FamilyTheater.Core.Data;
+using FamilyTheater.Core.Logger;
 using FamilyTheater.Core.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace LoginWindow.Views
 {
@@ -14,14 +15,16 @@ namespace LoginWindow.Views
     {
         private readonly Picture _picture;
         private readonly IPictureService _pictureService;
+        private readonly IAppLogger _logger;
         private readonly ObservableCollection<DetailTagViewModel> _allTags = new();
         private readonly ObservableCollection<string> _pictureTags = new();
 
-        public PictureDetailWindow(Picture picture, IPictureService pictureService)
+        public PictureDetailWindow(Picture picture, IPictureService pictureService, IAppLogger logger)
         {
             InitializeComponent();
             _picture = picture;
             _pictureService = pictureService;
+            _logger = logger;
 
             TitleInput.Text = picture.FileName;
             FolderPathText.Text = picture.FilePath;
@@ -36,6 +39,7 @@ namespace LoginWindow.Views
                 }
                 catch
                 {
+                    _logger.Warn($"加载图片详情预览失败：PictureId={picture.Id}，FilePath={picture.FilePath}");
                     PosterImage.Visibility = Visibility.Collapsed;
                 }
             }
@@ -47,11 +51,13 @@ namespace LoginWindow.Views
             _pictureTags.Clear();
             if (picture.PictureTags != null)
             {
-                foreach (var pt in picture.PictureTags)
-                    _pictureTags.Add(pt.TagName);
+                foreach (var tag in picture.PictureTags)
+                {
+                    _pictureTags.Add(tag.TagName);
+                }
             }
-            PictureTagsList.ItemsSource = _pictureTags;
 
+            PictureTagsList.ItemsSource = _pictureTags;
             AllTagsList.ItemsSource = _allTags;
             _ = LoadAllTagsAsync();
         }
@@ -59,73 +65,76 @@ namespace LoginWindow.Views
         private async Task LoadAllTagsAsync()
         {
             var tags = await _pictureService.GetAllTagsAsync();
-
             var freshPicture = await _pictureService.GetPictureByIdAsync(_picture.Id);
+
             _pictureTags.Clear();
             if (freshPicture?.PictureTags != null)
             {
-                foreach (var pt in freshPicture.PictureTags)
-                    _pictureTags.Add(pt.TagName);
+                foreach (var tag in freshPicture.PictureTags)
+                {
+                    _pictureTags.Add(tag.TagName);
+                }
             }
 
             _allTags.Clear();
             foreach (var name in tags)
             {
-                var vm = new DetailTagViewModel(name);
-                vm.IsSelected = _pictureTags.Any(t =>
-                    t.Equals(name, StringComparison.OrdinalIgnoreCase));
-                _allTags.Add(vm);
+                var viewModel = new DetailTagViewModel(name)
+                {
+                    IsSelected = _pictureTags.Any(t => t.Equals(name, StringComparison.OrdinalIgnoreCase))
+                };
+                _allTags.Add(viewModel);
             }
         }
 
-        /// <summary>
-        /// 点击已有标签：切换选中状态 → 立即写库 → 刷新 UI。
-        /// </summary>
         private async void ToggleTag_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is System.Windows.Controls.Button btn && btn.DataContext is DetailTagViewModel tagVm)
+            if (sender is not System.Windows.Controls.Button { DataContext: DetailTagViewModel tagViewModel })
             {
-                tagVm.IsSelected = !tagVm.IsSelected;
+                return;
+            }
 
-                if (tagVm.IsSelected)
+            tagViewModel.IsSelected = !tagViewModel.IsSelected;
+
+            if (tagViewModel.IsSelected)
+            {
+                await _pictureService.AddTagToPictureAsync(_picture.Id, tagViewModel.Name);
+                if (!_pictureTags.Any(t => t.Equals(tagViewModel.Name, StringComparison.OrdinalIgnoreCase)))
                 {
-                    await _pictureService.AddTagToPictureAsync(_picture.Id, tagVm.Name);
-                    if (!_pictureTags.Any(t => t.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase)))
-                        _pictureTags.Add(tagVm.Name);
+                    _pictureTags.Add(tagViewModel.Name);
                 }
-                else
+            }
+            else
+            {
+                await _pictureService.RemoveTagFromPictureAsync(_picture.Id, tagViewModel.Name);
+                var tagToRemove = _pictureTags.FirstOrDefault(t =>
+                    t.Equals(tagViewModel.Name, StringComparison.OrdinalIgnoreCase));
+                if (tagToRemove != null)
                 {
-                    await _pictureService.RemoveTagFromPictureAsync(_picture.Id, tagVm.Name);
-                    var toRemove = _pictureTags.FirstOrDefault(t =>
-                        t.Equals(tagVm.Name, StringComparison.OrdinalIgnoreCase));
-                    if (toRemove != null)
-                        _pictureTags.Remove(toRemove);
+                    _pictureTags.Remove(tagToRemove);
                 }
             }
         }
 
-        /// <summary>
-        /// 点击所属标签：从图片移除 → 同步标签选择区。
-        /// </summary>
         private async void RemoveTag_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is System.Windows.Controls.Button btn && btn.DataContext is string tagName)
+            if (sender is not System.Windows.Controls.Button { DataContext: string tagName })
             {
-                await _pictureService.RemoveTagFromPictureAsync(_picture.Id, tagName);
+                return;
+            }
 
-                _pictureTags.Remove(tagName);
+            await _pictureService.RemoveTagFromPictureAsync(_picture.Id, tagName);
+            _pictureTags.Remove(tagName);
 
-                var vm = _allTags.FirstOrDefault(t =>
-                    t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
-                if (vm != null)
-                    vm.IsSelected = false;
+            var tagViewModel = _allTags.FirstOrDefault(t =>
+                t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+            if (tagViewModel != null)
+            {
+                tagViewModel.IsSelected = false;
             }
         }
 
-        /// <summary>
-        /// 新建标签输入栏回车 → 添加。
-        /// </summary>
-        private void NewTagInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private void NewTagInput_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
@@ -134,42 +143,43 @@ namespace LoginWindow.Views
             }
         }
 
-        /// <summary>
-        /// 点击添加按钮 → 创建新标签并添加到图片。
-        /// </summary>
         private async void AddNewTag_Click(object sender, RoutedEventArgs e)
         {
             var name = NewTagInput.Text.Trim();
             if (string.IsNullOrEmpty(name))
+            {
                 return;
+            }
 
             await _pictureService.AddTagToPictureAsync(_picture.Id, name);
 
             if (!_pictureTags.Any(t => t.Equals(name, StringComparison.OrdinalIgnoreCase)))
-                _pictureTags.Add(name);
-
-            var vm = _allTags.FirstOrDefault(t =>
-                t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-            if (vm == null)
             {
-                vm = new DetailTagViewModel(name) { IsSelected = true };
-                _allTags.Add(vm);
+                _pictureTags.Add(name);
+            }
+
+            var existing = _allTags.FirstOrDefault(t =>
+                t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                _allTags.Add(new DetailTagViewModel(name) { IsSelected = true });
             }
             else
             {
-                vm.IsSelected = true;
+                existing.IsSelected = true;
             }
 
             NewTagInput.Text = string.Empty;
         }
 
-        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        protected override void OnKeyDown(KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
                 Close();
                 e.Handled = true;
             }
+
             base.OnKeyDown(e);
         }
     }
