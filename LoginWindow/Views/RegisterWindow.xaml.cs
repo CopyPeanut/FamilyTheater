@@ -1,4 +1,4 @@
-﻿using LoginWindow.Models;
+using LoginWindow.Models;
 using ReactiveUI;
 using System.Reactive.Disposables;
 using System.Windows;
@@ -34,9 +34,10 @@ namespace LoginWindow.Views
         object? IViewFor.ViewModel { get => ViewModel; set => throw new NotImplementedException(); }
 
 
-        public RegisterWindow()
+        public RegisterWindow(RegisterWindowModel viewModel)
         {
             InitializeComponent();
+            this.DataContext = viewModel;
             this.WhenActivated(disposables =>
             {
                 this.OneWayBind(ViewModel, vm => vm, v => v.DataContext)

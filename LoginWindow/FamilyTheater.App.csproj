@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+	<ApplicationIcon>Resource/favicon.ico</ApplicationIcon>
+    <UseWPF>true</UseWPF>
+	<UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resource\cog-fill-b.png" />
+    <None Remove="Resource\cog-fill-w.png" />
+    <None Remove="Resource\key.ico" />
+    <None Remove="Resource\user-group-b.png" />
+    <None Remove="Resource\user-group-w.png" />
+    <None Remove="Resource\user.ico" />
+    <None Remove="Resource\三极酷圆简体.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resource\cog-fill-b.png" />
+    <Resource Include="Resource\cog-fill-w.png" />
+    <Resource Include="Resource\user-group-b.png" />
+    <Resource Include="Resource\user-group-w.png" />
+    <Resource Include="Resource\user.ico" />
+  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="HandyControl" Version="3.5.1" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.11">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+		<PackageReference Include="ReactiveUI" Version="16.4.15" />
+		<PackageReference Include="ReactiveUI.Fody" Version="16.4.15" />
+		<PackageReference Include="ReactiveUI.WPF" Version="16.4.15" />
+	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FamilyTheater.Core\FamilyTheater.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resource\key.ico" />
+    <Resource Include="Resource\三极酷圆简体.ttf" />
+  </ItemGroup>
+
+</Project>

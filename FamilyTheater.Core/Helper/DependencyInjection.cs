@@ -1,24 +1,22 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
-using System.Windows;
-using System.IO;
 using FamilyTheater.Core.Data;
-using System.Security.Cryptography;
-namespace FamilyTheater.Core.Services
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FamilyTheater.Core.Services;
+
+public static class DependencyInjection
 {
-    public static class DependencyInjection
+    public static IServiceCollection AddCoreServices(this IServiceCollection services, string dbPath)
     {
-        public static IServiceCollection AddCoreServices(this IServiceCollection services, string dbPath)
-        {
-            // 统一注册 DbContext
-            services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlite($"Data Source={dbPath};Cache=Shared"),
-                ServiceLifetime.Transient);
+        services.AddDbContext<AppDbContext>(
+            options => options.UseSqlite($"Data Source={dbPath};Cache=Shared"),
+            ServiceLifetime.Scoped);
 
-            // 统一注册所有 Core 服务
-            services.AddSingleton<IUserService, UserService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<ISettingService, SettingService>();
+        services.AddScoped<IMovieService, MovieService>();
+        services.AddScoped<IPictureService, PictureService>();
 
-            return services;
-        }
+        return services;
     }
 }

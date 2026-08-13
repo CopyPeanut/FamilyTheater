@@ -1,4 +1,4 @@
-﻿using System.Reactive.Disposables;
+using System.Reactive.Disposables;
 using System.Windows;
 using LoginWindow.Models;
 using ReactiveUI;
@@ -39,15 +39,6 @@ namespace LoginWindow.Views
                 this.OneWayBind(ViewModel, vm => vm, v => v.DataContext)
                     .DisposeWith(disposables);
             });
-        }
-
-        private void OpenRegisterWindow_Click(object sender, RoutedEventArgs e)
-        {
-            var registerWindow = new RegisterWindow();
-            registerWindow.Owner = this;
-            RegisterWindowModel model = new(ViewModel._dbContext);
-            registerWindow.DataContext = model;
-            registerWindow.ShowDialog();
         }
     }
 }
