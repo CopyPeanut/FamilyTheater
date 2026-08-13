@@ -5,6 +5,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>FamilyTheater</AssemblyName>
 	<ApplicationIcon>Resource/favicon.ico</ApplicationIcon>
     <UseWPF>true</UseWPF>
 	<UseWindowsForms>true</UseWindowsForms>
