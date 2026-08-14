@@ -1,5 +1,4 @@
 using FamilyTheater.Core.Data;
-using FamilyTheater.Core.Helper;
 using FamilyTheater.Core.Logger;
 using FamilyTheater.Core.Services;
 using LoginWindow.Models;
@@ -7,6 +6,7 @@ using LoginWindow.Views;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Data;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -84,10 +84,17 @@ public partial class App : System.Windows.Application
                 services.AddTransient<HomeWindowModel>();
                 services.AddTransient<ConfigWindow>();
                 services.AddTransient<ConfigWindowModel>();
+                services.AddTransient<UserPermissionsWindow>();
+                services.AddTransient<UserPermissionsWindowModel>();
+                services.AddTransient<ChangePasswordWindow>();
+                services.AddTransient<ChangePasswordWindowModel>();
 
                 services.AddSingleton<Func<HomeWindow>>(provider => () => provider.GetRequiredService<HomeWindow>());
                 services.AddSingleton<Func<RegisterWindow>>(provider => () => provider.GetRequiredService<RegisterWindow>());
                 services.AddSingleton<Func<ConfigWindow>>(provider => () => provider.GetRequiredService<ConfigWindow>());
+                services.AddSingleton<Func<UserPermissionsWindow>>(provider => () => provider.GetRequiredService<UserPermissionsWindow>());
+                services.AddSingleton<Func<ChangePasswordWindow>>(provider => () => provider.GetRequiredService<ChangePasswordWindow>());
+                services.AddSingleton<Func<Login>>(provider => () => provider.GetRequiredService<Login>());
             })
             .Build();
 
@@ -105,26 +112,61 @@ public partial class App : System.Windows.Application
                     .Replace("CREATE INDEX \"", "CREATE INDEX IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase)
                     .Replace("CREATE TABLE \"", "CREATE TABLE IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase);
                 db.Database.ExecuteSqlRaw(idempotentScript);
+                EnsureUserRoleColumn(db);
 
-                if (!db.Users.Any())
+                if (db.Users.Any() && !db.Users.Any(user => user.Role == UserRoles.Admin))
                 {
-                    db.Users.Add(new User
-                    {
-                        Username = "admin",
-                        PasswordHash = LoginHelper.HashPassword("123456")
-                    });
+                    var firstUser = db.Users.OrderBy(user => user.Id).First();
+                    firstUser.Role = UserRoles.Admin;
                     db.SaveChanges();
+                    logger.Info($"未发现 admin 账户，已将首个用户设为 admin：UserId={firstUser.Id}，Username={firstUser.Username}");
                 }
             });
         }
 
-        var loginViewModel = AppHost.Services.GetRequiredService<LoginModel>();
         var loginView = AppHost.Services.GetRequiredService<Login>();
-
-        loginViewModel.LoginSuccess += () => loginView.Close();
-        loginView.DataContext = loginViewModel;
-        loginView.ViewModel = loginViewModel;
         loginView.Show();
+    }
+
+    private static void EnsureUserRoleColumn(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            connection.Open();
+        }
+
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA table_info(\"Users\");";
+            using var reader = command.ExecuteReader();
+
+            var hasRoleColumn = false;
+            while (reader.Read())
+            {
+                if (string.Equals(reader["name"]?.ToString(), nameof(User.Role), StringComparison.OrdinalIgnoreCase))
+                {
+                    hasRoleColumn = true;
+                    break;
+                }
+            }
+
+            reader.Close();
+
+            if (!hasRoleColumn)
+            {
+                db.Database.ExecuteSqlRaw($"ALTER TABLE \"Users\" ADD COLUMN \"Role\" TEXT NOT NULL DEFAULT '{UserRoles.User}';");
+            }
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                connection.Close();
+            }
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)

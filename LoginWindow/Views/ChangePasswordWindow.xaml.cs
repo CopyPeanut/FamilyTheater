@@ -1,42 +1,44 @@
-using System.Reactive.Disposables;
-using System.Windows;
 using LoginWindow.Models;
 using ReactiveUI;
+using System;
+using System.Reactive.Disposables;
+using System.Windows;
 
 namespace LoginWindow.Views
 {
-    public partial class Login : Window, IViewFor<LoginModel>
+    public partial class ChangePasswordWindow : Window, IViewFor<ChangePasswordWindowModel>
     {
-
         public static readonly DependencyProperty ViewModelProperty =
             DependencyProperty.Register(
                 nameof(ViewModel),
-                typeof(LoginModel),
-                typeof(Login),
+                typeof(ChangePasswordWindowModel),
+                typeof(ChangePasswordWindow),
                 new PropertyMetadata(null));
 
-        // 显式实现接口
-        LoginModel IViewFor<LoginModel>.ViewModel
+        ChangePasswordWindowModel IViewFor<ChangePasswordWindowModel>.ViewModel
         {
             get => ViewModel;
             set => ViewModel = value;
         }
 
-        // 公共属性
-        public LoginModel ViewModel
+        public ChangePasswordWindowModel ViewModel
         {
-            get => (LoginModel)GetValue(ViewModelProperty);
+            get => (ChangePasswordWindowModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
-        object? IViewFor.ViewModel { get => ViewModel; set => throw new NotImplementedException(); }
 
+        object? IViewFor.ViewModel
+        {
+            get => ViewModel;
+            set => throw new NotImplementedException();
+        }
 
-        public Login(LoginModel viewModel)
+        public ChangePasswordWindow(ChangePasswordWindowModel viewModel)
         {
             InitializeComponent();
             ViewModel = viewModel;
             DataContext = viewModel;
-            viewModel.LoginSuccess += Close;
+            viewModel.PasswordChanged += Close;
 
             this.WhenActivated(disposables =>
             {

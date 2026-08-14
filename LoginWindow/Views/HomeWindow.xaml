@@ -13,6 +13,40 @@
         <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <local:ActiveCategoryToVisibilityConverter x:Key="CategoryToVisibility"/>
         <local:StringToImageConverter x:Key="StringToImage"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style x:Key="TransparentTopMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Grid>
+                            <Border Background="Transparent"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter ContentSource="Header"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Bottom"
+                                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                   PopupAnimation="Fade">
+                                <Border Background="White"
+                                        BorderBrush="#DDDDDD"
+                                        BorderThickness="1"
+                                        Padding="2">
+                                    <StackPanel IsItemsHost="True"
+                                                KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid>
         <local:StarfieldBackground StarCount="70" />
@@ -174,17 +208,22 @@
                         </Button>
 
                         <!-- 2. 账户下拉选单 -->
-                        <Menu Background="Transparent" >
-                            <MenuItem Padding="8" ToolTip="账户" Height="45" RenderTransformOrigin="0.517,0.112">
+                        <Menu Background="Transparent">
+                            <MenuItem Padding="8" ToolTip="账户" Height="45" RenderTransformOrigin="0.517,0.112"
+                                      Style="{StaticResource TransparentTopMenuItemStyle}">
                                 <MenuItem.Header>
-                                    <Image Source="/Resource/user-group-w.png" Width="40" Height="28"  />
+                                    <Image Source="/Resource/user-group-w.png" Width="40" Height="28"/>
                                 </MenuItem.Header>
 
                                 <!-- 下拉菜单项 -->
-                                <MenuItem Header="个人资料" Command="{Binding}"/>
-                                <MenuItem Header="修改密码" Command="{Binding}"/>
-                                <Separator />
-                                <MenuItem Header="退出登录" Command="{Binding}"/>
+                                <MenuItem Header="{Binding CurrentUserText}" IsEnabled="False"/>
+                                <Separator/>
+                                <MenuItem Header="修改密码" Command="{Binding OpenChangePasswordCmd}"/>
+                                <MenuItem Header="修改用户权限"
+                                          Command="{Binding OpenUserPermissionsCmd}"
+                                          Visibility="{Binding IsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                <Separator/>
+                                <MenuItem Header="退出登录" Command="{Binding LogoutCmd}"/>
                             </MenuItem>
                         </Menu>
                     </StackPanel>

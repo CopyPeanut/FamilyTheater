@@ -12,6 +12,7 @@ public static class DependencyInjection
             options => options.UseSqlite($"Data Source={dbPath};Cache=Shared"),
             ServiceLifetime.Scoped);
 
+        services.AddSingleton<ICurrentUserSession, CurrentUserSession>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISettingService, SettingService>();
         services.AddScoped<IMovieService, MovieService>();

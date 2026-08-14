@@ -13,6 +13,7 @@ namespace LoginWindow.Views
     {
         private readonly HomeWindowModel _viewModel;
         private readonly IAppLogger _logger;
+        private readonly Func<Login> _loginWindowFactory;
 
         public static readonly DependencyProperty ViewModelProperty =
             DependencyProperty.Register(
@@ -39,22 +40,31 @@ namespace LoginWindow.Views
             set => throw new NotImplementedException();
         }
 
-        public HomeWindow(HomeWindowModel viewModel, IAppLogger logger)
+        public HomeWindow(HomeWindowModel viewModel, IAppLogger logger, Func<Login> loginWindowFactory)
         {
             InitializeComponent();
             _viewModel = viewModel;
             _logger = logger;
+            _loginWindowFactory = loginWindowFactory;
 
             DataContext = viewModel;
             ViewModel = viewModel;
             InputBindings.Add(new KeyBinding(viewModel.PrevPageCmd, Key.Left, ModifierKeys.None));
             InputBindings.Add(new KeyBinding(viewModel.NextPageCmd, Key.Right, ModifierKeys.None));
+            viewModel.LogoutRequested += OnLogoutRequested;
             Loaded += HomeWindow_Loaded;
         }
 
         private async void HomeWindow_Loaded(object sender, RoutedEventArgs e)
         {
             await _viewModel.LoadMoviesAsync();
+        }
+
+        private void OnLogoutRequested()
+        {
+            var loginWindow = _loginWindowFactory();
+            loginWindow.Show();
+            Close();
         }
 
         private async void MovieCard_Click(object sender, MouseButtonEventArgs e)

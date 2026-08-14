@@ -33,7 +33,10 @@ namespace LoginWindow.Models
         private readonly IUserService _userService;
         private readonly IMovieService _movieService;
         private readonly IPictureService _pictureService;
+        private readonly ICurrentUserSession _currentUserSession;
         private readonly Func<ConfigWindow> _configWindowFactory;
+        private readonly Func<UserPermissionsWindow> _userPermissionsWindowFactory;
+        private readonly Func<ChangePasswordWindow> _changePasswordWindowFactory;
         private readonly Dictionary<string, ICategoryHandler> _categoryHandlers;
 
         public IMovieService MovieService => _movieService;
@@ -45,6 +48,10 @@ namespace LoginWindow.Models
         [Reactive] public string JumpPageText { get; set; } = string.Empty;
         [Reactive] public string SearchText { get; set; } = string.Empty;
         [Reactive] public string ActiveCategory { get; set; } = "movie";
+        public bool IsAdmin => _currentUserSession.IsAdmin;
+        public string CurrentUserText => string.IsNullOrEmpty(_currentUserSession.Username)
+            ? string.Empty
+            : $"{_currentUserSession.Username} ({_currentUserSession.Role})";
 
         public ObservableCollection<Movie> CurrentPageMovies { get; } = new();
         public ObservableCollection<Picture> CurrentPagePictures { get; } = new();
@@ -59,19 +66,30 @@ namespace LoginWindow.Models
         public ReactiveCommand<Unit, Unit> JumpPageCmd { get; }
         public ReactiveCommand<Unit, Unit> FillRandomCmd { get; }
         public ReactiveCommand<Unit, Unit> OpenConfigCmd { get; }
+        public ReactiveCommand<Unit, Unit> OpenUserPermissionsCmd { get; }
+        public ReactiveCommand<Unit, Unit> OpenChangePasswordCmd { get; }
+        public ReactiveCommand<Unit, Unit> LogoutCmd { get; }
         public ReactiveCommand<string, Unit> ToggleTagCmd { get; }
         public ReactiveCommand<string, Unit> SwitchCategoryCmd { get; }
+
+        public event Action? LogoutRequested;
 
         public HomeWindowModel(
             IUserService userService,
             IMovieService movieService,
             IPictureService pictureService,
-            Func<ConfigWindow> configWindowFactory)
+            ICurrentUserSession currentUserSession,
+            Func<ConfigWindow> configWindowFactory,
+            Func<UserPermissionsWindow> userPermissionsWindowFactory,
+            Func<ChangePasswordWindow> changePasswordWindowFactory)
         {
             _userService = userService;
             _movieService = movieService;
             _pictureService = pictureService;
+            _currentUserSession = currentUserSession;
             _configWindowFactory = configWindowFactory;
+            _userPermissionsWindowFactory = userPermissionsWindowFactory;
+            _changePasswordWindowFactory = changePasswordWindowFactory;
 
             _categoryHandlers = new Dictionary<string, ICategoryHandler>(StringComparer.OrdinalIgnoreCase)
             {
@@ -121,6 +139,26 @@ namespace LoginWindow.Models
                 var window = _configWindowFactory();
                 window.ShowDialog();
                 await LoadCategoryAsync(ActiveCategory);
+            });
+            OpenUserPermissionsCmd = ReactiveCommand.Create(() =>
+            {
+                if (!_currentUserSession.IsAdmin)
+                {
+                    return;
+                }
+
+                var window = _userPermissionsWindowFactory();
+                window.ShowDialog();
+            });
+            OpenChangePasswordCmd = ReactiveCommand.Create(() =>
+            {
+                var window = _changePasswordWindowFactory();
+                window.ShowDialog();
+            });
+            LogoutCmd = ReactiveCommand.Create(() =>
+            {
+                _userService.Logout();
+                LogoutRequested?.Invoke();
             });
             ToggleTagCmd = ReactiveCommand.Create<string>(tagName =>
             {
