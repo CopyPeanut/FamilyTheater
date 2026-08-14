@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 
 namespace LoginWindow.Models
@@ -65,6 +64,7 @@ namespace LoginWindow.Models
         public ReactiveCommand<int, Unit> GoToPageCmd { get; }
         public ReactiveCommand<Unit, Unit> JumpPageCmd { get; }
         public ReactiveCommand<Unit, Unit> FillRandomCmd { get; }
+        public ReactiveCommand<Unit, Unit> SearchCmd { get; }
         public ReactiveCommand<Unit, Unit> OpenConfigCmd { get; }
         public ReactiveCommand<Unit, Unit> OpenUserPermissionsCmd { get; }
         public ReactiveCommand<Unit, Unit> OpenChangePasswordCmd { get; }
@@ -134,6 +134,11 @@ namespace LoginWindow.Models
                 JumpPageText = string.Empty;
             });
             FillRandomCmd = ReactiveCommand.Create(FillRandomItems);
+            SearchCmd = ReactiveCommand.Create(() =>
+            {
+                CurrentPage = 1;
+                ApplyActiveCategoryFilter();
+            });
             OpenConfigCmd = ReactiveCommand.CreateFromTask(async () =>
             {
                 var window = _configWindowFactory();
@@ -173,14 +178,6 @@ namespace LoginWindow.Models
                 ApplyActiveCategoryFilter();
             });
             SwitchCategoryCmd = ReactiveCommand.CreateFromTask<string>(LoadCategoryAsync);
-
-            this.WhenAnyValue(x => x.SearchText)
-                .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
-                .Subscribe(_ =>
-                {
-                    CurrentPage = 1;
-                    ApplyActiveCategoryFilter();
-                });
 
             this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
                 .Subscribe(_ =>

@@ -37,7 +37,10 @@ namespace LoginWindow.Views
         public RegisterWindow(RegisterWindowModel viewModel)
         {
             InitializeComponent();
-            this.DataContext = viewModel;
+            ViewModel = viewModel;
+            DataContext = viewModel;
+            viewModel.RegisterSucceeded += Close;
+
             this.WhenActivated(disposables =>
             {
                 this.OneWayBind(ViewModel, vm => vm, v => v.DataContext)

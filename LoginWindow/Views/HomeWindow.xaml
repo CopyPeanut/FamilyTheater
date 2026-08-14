@@ -243,8 +243,17 @@
                     </Grid.RowDefinitions>
 
                     <!-- 1. 搜索栏 -->
-                    <TextBox Grid.Row="0" Height="35" Margin="0,0,0,15" Background="#333333" Foreground="White" BorderBrush="#555555" 
+                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="90"/>
+                        </Grid.ColumnDefinitions>
+
+                    <TextBox Grid.Column="0" Height="35" Margin="0,0,10,0" Background="#333333" Foreground="White" BorderBrush="#555555" 
                              BorderThickness="1" Padding="10,0" VerticalContentAlignment="Center" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCmd}"/>
+                        </TextBox.InputBindings>
                         <TextBox.Style>
                             <Style TargetType="TextBox">
                                 <Style.Triggers>
@@ -273,6 +282,16 @@
                             </ControlTemplate>
                         </TextBox.Template>
                     </TextBox>
+
+                        <Button Grid.Column="1"
+                                Content="搜索"
+                                Command="{Binding SearchCmd}"
+                                Height="35"
+                                Background="#f1b054"
+                                Foreground="Black"
+                                BorderThickness="0"
+                                Cursor="Hand"/>
+                    </Grid>
 
                     <!-- 2. 标签筛选区 -->
                     <ItemsControl Grid.Row="1" ItemsSource="{Binding Tags}" Margin="10,5,10,5">

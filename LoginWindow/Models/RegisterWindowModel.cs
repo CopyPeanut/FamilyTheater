@@ -4,7 +4,9 @@ using FamilyTheater.Core.Services;
 using LoginWindow.Views;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
+using System;
 using System.Reactive;
+using System.Windows;
 
 namespace LoginWindow.Models
 {
@@ -27,6 +29,7 @@ namespace LoginWindow.Models
         private bool IsRegistering { get; set; }
 
         public ReactiveCommand<Unit, Unit> RegisterCommand { get; }
+        public event Action? RegisterSucceeded;
 
         private async void OnRegister()
         {
@@ -39,7 +42,9 @@ namespace LoginWindow.Models
 
             try
             {
-                if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(Password) || string.IsNullOrEmpty(ConfirmPassword))
+                if (string.IsNullOrEmpty(UserName) ||
+                    string.IsNullOrEmpty(Password) ||
+                    string.IsNullOrEmpty(ConfirmPassword))
                 {
                     _logger.Warn("用户注册失败：注册信息为空。");
                     CustomMessageBox.Show("注册信息不能为空", LogLevel.ERROR);
@@ -77,7 +82,15 @@ namespace LoginWindow.Models
                     success ? LogLevel.INFO : LogLevel.ERROR,
                     success ? $"用户注册成功：{normalizedUserName}" : $"用户注册失败：{normalizedUserName}");
 
-                CustomMessageBox.Show(success ? "注册成功" : "注册失败，请重试");
+                if (success)
+                {
+                    CustomMessageBox.ShowDialog("注册成功", button: MessageBoxButton.OK);
+                    RegisterSucceeded?.Invoke();
+                }
+                else
+                {
+                    CustomMessageBox.Show("注册失败，请重试", LogLevel.ERROR);
+                }
             }
             finally
             {
