@@ -11,13 +11,13 @@ public class PictureService : IPictureService
         ".jpg", ".jpeg", ".png", ".webp", ".bmp"
     };
 
-    private readonly AppDbContext _db;
+    private readonly ILibraryDbContextFactory _dbContextFactory;
     private readonly ISettingService _settingService;
     private readonly IAppLogger _logger;
 
-    public PictureService(AppDbContext db, ISettingService settingService, IAppLogger logger)
+    public PictureService(ILibraryDbContextFactory dbContextFactory, ISettingService settingService, IAppLogger logger)
     {
-        _db = db;
+        _dbContextFactory = dbContextFactory;
         _settingService = settingService;
         _logger = logger;
     }
@@ -57,7 +57,8 @@ public class PictureService : IPictureService
             return result;
         }
 
-        var existingPictures = await _db.Pictures
+        using var db = _dbContextFactory.CreateDbContext();
+        var existingPictures = await db.Pictures
             .Include(p => p.PictureTags)
             .ToDictionaryAsync(p => p.FilePath, p => p, StringComparer.OrdinalIgnoreCase);
 
@@ -120,21 +121,22 @@ public class PictureService : IPictureService
 
                     newPicture.PictureTags.Add(new PictureTag { Picture = newPicture, TagName = tagName });
 
-                    _db.Pictures.Add(newPicture);
+                    db.Pictures.Add(newPicture);
                     existingPictures[imageFile] = newPicture;
                     result.Added++;
                 }
             }
         }
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
         _logger.Info($"图片库扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
         return result;
     }
 
     public async Task<List<Picture>> GetAllPicturesAsync()
     {
-        return await _db.Pictures
+        using var db = _dbContextFactory.CreateDbContext();
+        return await db.Pictures
             .Include(p => p.PictureTags)
             .AsNoTracking()
             .ToListAsync();
@@ -142,7 +144,8 @@ public class PictureService : IPictureService
 
     public async Task<List<string>> GetAllTagsAsync()
     {
-        return await _db.PictureTags
+        using var db = _dbContextFactory.CreateDbContext();
+        return await db.PictureTags
             .Select(pt => pt.TagName)
             .Distinct()
             .OrderBy(name => name)
@@ -152,7 +155,8 @@ public class PictureService : IPictureService
 
     public async Task<Picture?> GetPictureByIdAsync(int pictureId)
     {
-        return await _db.Pictures
+        using var db = _dbContextFactory.CreateDbContext();
+        return await db.Pictures
             .Include(p => p.PictureTags)
             .FirstOrDefaultAsync(p => p.Id == pictureId);
     }
@@ -166,7 +170,8 @@ public class PictureService : IPictureService
             return;
         }
 
-        var picture = await _db.Pictures
+        using var db = _dbContextFactory.CreateDbContext();
+        var picture = await db.Pictures
             .Include(p => p.PictureTags)
             .FirstOrDefaultAsync(p => p.Id == pictureId);
         if (picture == null)
@@ -179,7 +184,7 @@ public class PictureService : IPictureService
             return;
 
         picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = name });
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
         _logger.Info($"图片标签已添加：PictureId={pictureId}，Tag={name}");
     }
 
@@ -192,7 +197,8 @@ public class PictureService : IPictureService
             return;
         }
 
-        var link = await _db.PictureTags
+        using var db = _dbContextFactory.CreateDbContext();
+        var link = await db.PictureTags
             .FirstOrDefaultAsync(pt => pt.PictureId == pictureId && pt.TagName == name);
         if (link == null)
         {
@@ -200,14 +206,15 @@ public class PictureService : IPictureService
             return;
         }
 
-        _db.PictureTags.Remove(link);
-        await _db.SaveChangesAsync();
+        db.PictureTags.Remove(link);
+        await db.SaveChangesAsync();
         _logger.Info($"图片标签已移除：PictureId={pictureId}，Tag={name}");
     }
 
     public async Task DeletePictureAsync(int pictureId)
     {
-        var picture = await _db.Pictures
+        using var db = _dbContextFactory.CreateDbContext();
+        var picture = await db.Pictures
             .Include(p => p.PictureTags)
             .FirstOrDefaultAsync(p => p.Id == pictureId);
         if (picture == null)
@@ -216,9 +223,9 @@ public class PictureService : IPictureService
             return;
         }
 
-        _db.PictureTags.RemoveRange(picture.PictureTags);
-        _db.Pictures.Remove(picture);
-        await _db.SaveChangesAsync();
+        db.PictureTags.RemoveRange(picture.PictureTags);
+        db.Pictures.Remove(picture);
+        await db.SaveChangesAsync();
         _logger.Info($"图片记录已删除：PictureId={pictureId}，FilePath={picture.FilePath}");
     }
 }

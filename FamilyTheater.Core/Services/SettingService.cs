@@ -9,18 +9,19 @@ public class SettingService : ISettingService
     private const string MediaRootPathKey = "MediaRootPath";
     private const string PictureRootPathKey = "PictureRootPath";
 
-    private readonly AppDbContext _db;
+    private readonly ILibraryDbContextFactory _dbContextFactory;
     private readonly IAppLogger _logger;
 
-    public SettingService(AppDbContext db, IAppLogger logger)
+    public SettingService(ILibraryDbContextFactory dbContextFactory, IAppLogger logger)
     {
-        _db = db;
+        _dbContextFactory = dbContextFactory;
         _logger = logger;
     }
 
     public async Task<string?> GetAsync(string key)
     {
-        var setting = await _db.Settings
+        using var db = _dbContextFactory.CreateDbContext();
+        var setting = await db.Settings
             .AsNoTracking()
             .Where(s => s.Key == key)
             .Select(s => new { s.Value })
@@ -31,18 +32,19 @@ public class SettingService : ISettingService
 
     public async Task SetAsync(string key, string value)
     {
-        var existing = await _db.Settings.FirstOrDefaultAsync(s => s.Key == key);
+        using var db = _dbContextFactory.CreateDbContext();
+        var existing = await db.Settings.FirstOrDefaultAsync(s => s.Key == key);
         if (existing != null)
         {
             existing.Value = value;
         }
         else
         {
-            _db.Settings.Add(new Setting { Key = key, Value = value });
+            db.Settings.Add(new Setting { Key = key, Value = value });
         }
 
-        await _db.SaveChangesAsync();
-        _logger.Info($"设置已保存：{key}={value}");
+        await db.SaveChangesAsync();
+        _logger.Info($"设置已保存：{key}={value}，Db={_dbContextFactory.CurrentDatabasePath}");
     }
 
     public Task<string?> GetMediaRootPathAsync() => GetAsync(MediaRootPathKey);

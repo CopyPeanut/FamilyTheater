@@ -19,13 +19,13 @@ public class MovieService : IMovieService
 
     private static readonly string[] PosterNamePriority = { "poster", "cover", "folder" };
 
-    private readonly AppDbContext _db;
+    private readonly ILibraryDbContextFactory _dbContextFactory;
     private readonly ISettingService _settingService;
     private readonly IAppLogger _logger;
 
-    public MovieService(AppDbContext db, ISettingService settingService, IAppLogger logger)
+    public MovieService(ILibraryDbContextFactory dbContextFactory, ISettingService settingService, IAppLogger logger)
     {
-        _db = db;
+        _dbContextFactory = dbContextFactory;
         _settingService = settingService;
         _logger = logger;
     }
@@ -50,7 +50,8 @@ public class MovieService : IMovieService
             return result;
         }
 
-        var existingMovies = await _db.Movies
+        using var db = _dbContextFactory.CreateDbContext();
+        var existingMovies = await db.Movies
             .Include(m => m.MovieTags)
             .ToDictionaryAsync(m => m.FolderPath, m => m, StringComparer.OrdinalIgnoreCase);
 
@@ -97,20 +98,21 @@ public class MovieService : IMovieService
                     newMovie.MovieTags.Add(new MovieTag { Movie = newMovie, TagName = tagName });
                 }
 
-                _db.Movies.Add(newMovie);
+                db.Movies.Add(newMovie);
                 existingMovies[folder] = newMovie;
                 result.Added++;
             }
         }
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
         _logger.Info($"电影库扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
         return result;
     }
 
     public async Task<List<Movie>> GetAllMoviesAsync()
     {
-        return await _db.Movies
+        using var db = _dbContextFactory.CreateDbContext();
+        return await db.Movies
             .Include(m => m.MovieTags)
             .AsNoTracking()
             .ToListAsync();
@@ -118,7 +120,8 @@ public class MovieService : IMovieService
 
     public async Task<List<string>> GetAllTagsAsync()
     {
-        return await _db.MovieTags
+        using var db = _dbContextFactory.CreateDbContext();
+        return await db.MovieTags
             .Select(mt => mt.TagName)
             .Distinct()
             .OrderBy(name => name)
@@ -128,7 +131,8 @@ public class MovieService : IMovieService
 
     public async Task<Movie?> GetMovieByIdAsync(int movieId)
     {
-        return await _db.Movies
+        using var db = _dbContextFactory.CreateDbContext();
+        return await db.Movies
             .Include(m => m.MovieTags)
             .FirstOrDefaultAsync(m => m.Id == movieId);
     }
@@ -142,7 +146,8 @@ public class MovieService : IMovieService
             return null;
         }
 
-        var movie = await _db.Movies
+        using var db = _dbContextFactory.CreateDbContext();
+        var movie = await db.Movies
             .Include(m => m.MovieTags)
             .FirstOrDefaultAsync(m => m.Id == movieId);
         if (movie == null)
@@ -195,7 +200,7 @@ public class MovieService : IMovieService
         }
 
         movie.LastScannedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
         _logger.Info($"电影记录已重命名：MovieId={movieId}，Title={title}");
         return movie;
     }
@@ -209,7 +214,8 @@ public class MovieService : IMovieService
             return;
         }
 
-        var movie = await _db.Movies
+        using var db = _dbContextFactory.CreateDbContext();
+        var movie = await db.Movies
             .Include(m => m.MovieTags)
             .FirstOrDefaultAsync(m => m.Id == movieId);
         if (movie == null)
@@ -222,7 +228,7 @@ public class MovieService : IMovieService
             return;
 
         movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = name });
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
         _logger.Info($"电影标签已添加：MovieId={movieId}，Tag={name}");
     }
 
@@ -235,7 +241,8 @@ public class MovieService : IMovieService
             return;
         }
 
-        var link = await _db.MovieTags
+        using var db = _dbContextFactory.CreateDbContext();
+        var link = await db.MovieTags
             .FirstOrDefaultAsync(mt => mt.MovieId == movieId && mt.TagName == name);
         if (link == null)
         {
@@ -243,14 +250,15 @@ public class MovieService : IMovieService
             return;
         }
 
-        _db.MovieTags.Remove(link);
-        await _db.SaveChangesAsync();
+        db.MovieTags.Remove(link);
+        await db.SaveChangesAsync();
         _logger.Info($"电影标签已移除：MovieId={movieId}，Tag={name}");
     }
 
     public async Task DeleteMovieAsync(int movieId)
     {
-        var movie = await _db.Movies
+        using var db = _dbContextFactory.CreateDbContext();
+        var movie = await db.Movies
             .Include(m => m.MovieTags)
             .FirstOrDefaultAsync(m => m.Id == movieId);
         if (movie == null)
@@ -259,9 +267,9 @@ public class MovieService : IMovieService
             return;
         }
 
-        _db.MovieTags.RemoveRange(movie.MovieTags);
-        _db.Movies.Remove(movie);
-        await _db.SaveChangesAsync();
+        db.MovieTags.RemoveRange(movie.MovieTags);
+        db.Movies.Remove(movie);
+        await db.SaveChangesAsync();
         _logger.Info($"电影记录已删除：MovieId={movieId}，Title={movie.Title}，FolderPath={movie.FolderPath}");
     }
 

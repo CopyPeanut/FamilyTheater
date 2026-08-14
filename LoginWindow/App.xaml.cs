@@ -60,6 +60,7 @@ public partial class App : System.Windows.Application
         logger.Info("FamilyTheater 启动。");
 
         var dbPath = Path.Combine(appDataDir, "FamilyTheater.db");
+        var userDbPath = Path.Combine(appDataDir, "FamilyTheater.User.db");
         var oldDbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FamilyTheater.db");
 
         if (!File.Exists(dbPath) && File.Exists(oldDbPath))
@@ -74,7 +75,7 @@ public partial class App : System.Windows.Application
                 services.AddSingleton(logger);
                 services.AddSingleton<IAppLogger>(logger);
 
-                services.AddCoreServices(dbPath);
+                services.AddCoreServices(dbPath, userDbPath);
 
                 services.AddTransient<LoginModel>();
                 services.AddTransient<Login>();
