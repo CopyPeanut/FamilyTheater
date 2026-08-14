@@ -1,15 +1,29 @@
 param(
     [string]$Configuration = "Release",
-    [string]$Version = "0.1.0"
+    [string]$Version
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $projectPath = Join-Path $repoRoot "LoginWindow\FamilyTheater.App.csproj"
+$propsPath = Join-Path $repoRoot "Directory.Build.props"
 $publishDir = Join-Path $repoRoot "artifacts\publish\win-x64"
 $installerScript = Join-Path $repoRoot "installer\FamilyTheater.iss"
 $installerOutputDir = Join-Path $repoRoot "artifacts\installer"
+
+if (-not $Version) {
+    if (-not (Test-Path $propsPath)) {
+        throw "Version was not provided and Directory.Build.props was not found."
+    }
+
+    [xml]$props = Get-Content $propsPath
+    $Version = $props.Project.PropertyGroup.Version
+
+    if (-not $Version) {
+        throw "Version was not provided and Directory.Build.props does not contain a Version value."
+    }
+}
 
 if (Test-Path $publishDir) {
     Remove-Item -LiteralPath $publishDir -Recurse -Force
