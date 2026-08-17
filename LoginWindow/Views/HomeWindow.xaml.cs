@@ -100,12 +100,12 @@ namespace LoginWindow.Views
                 return;
             }
 
-            if (string.IsNullOrEmpty(movie.FolderPath) || !Directory.Exists(movie.FolderPath))
+            if (string.IsNullOrEmpty(movie.VideoFilePath) || !File.Exists(movie.VideoFilePath))
             {
-                _logger.Warn($"打开电影详情失败：电影文件夹不存在。MovieId={movie.Id}，FolderPath={movie.FolderPath}");
-                if (CustomMessageBox.ShowDialog($"当前文件不存在：\n{movie.FolderPath}\n\n是否从数据库删除该记录？"))
+                _logger.Warn($"打开电影详情失败：电影文件不存在。MovieId={movie.Id}，VideoFilePath={movie.VideoFilePath}");
+                if (CustomMessageBox.ShowDialog($"当前文件不存在：\n{movie.VideoFilePath}\n\n是否从数据库删除该记录？"))
                 {
-                    _logger.Info($"用户确认删除失效电影记录：MovieId={movie.Id}，FolderPath={movie.FolderPath}");
+                    _logger.Info($"用户确认删除失效电影记录：MovieId={movie.Id}，VideoFilePath={movie.VideoFilePath}");
                     await _viewModel.MovieService.DeleteMovieAsync(movie.Id);
                     await _viewModel.LoadMoviesAsync();
                 }

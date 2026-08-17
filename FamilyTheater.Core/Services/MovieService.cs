@@ -43,40 +43,41 @@ public class MovieService : IMovieService
 
         _logger.Info($"开始扫描电影库：{rootPath}");
 
-        var leafFolders = FindLeafFolders(rootPath);
-        if (leafFolders.Count == 0)
-        {
-            _logger.Info($"电影库扫描结束：未找到叶子文件夹。RootPath={rootPath}");
-            return result;
-        }
+        var posterRootPath = await _settingService.GetMoviePosterRootPathAsync();
+        var posterIndex = BuildPosterIndex(posterRootPath);
 
         using var db = _dbContextFactory.CreateDbContext();
         var existingMovies = await db.Movies
             .Include(m => m.MovieTags)
-            .ToDictionaryAsync(m => m.FolderPath, m => m, StringComparer.OrdinalIgnoreCase);
+            .ToDictionaryAsync(m => m.VideoFilePath, m => m, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var folder in leafFolders)
+        var discoveredVideos = 0;
+        foreach (var videoFile in EnumerateVideoFilesRecursive(rootPath, result))
         {
-            var videoFile = FindVideoFile(folder);
-            if (videoFile == null)
-            {
-                result.Skipped++;
-                continue;
-            }
+            discoveredVideos++;
 
-            var posterFile = FindPosterFile(folder);
+            var folder = Path.GetDirectoryName(videoFile) ?? rootPath;
+            var title = Path.GetFileNameWithoutExtension(videoFile);
+            var posterFile = FindPosterFileForVideo(videoFile, posterIndex);
             if (posterFile == null)
             {
-                posterFile = await ExtractPosterFromVideoAsync(videoFile, folder);
+                var autoPosterFolder = GetAutoPosterFolder(rootPath, posterRootPath, folder);
+                posterFile = await ExtractPosterFromVideoAsync(videoFile, autoPosterFolder, title);
             }
 
             var tags = ExtractTagsFromPath(rootPath, folder);
 
-            if (existingMovies.TryGetValue(folder, out var movie))
+            if (existingMovies.TryGetValue(videoFile, out var movie))
             {
+                if (ShouldRefreshScannedTitle(movie))
+                {
+                    movie.Title = title;
+                }
+
+                movie.FolderPath = folder;
                 movie.VideoFilePath = videoFile;
                 movie.PosterPath = posterFile;
-                movie.FileSizeBytes = new FileInfo(videoFile).Length;
+                movie.FileSizeBytes = GetFileSizeBytes(videoFile);
                 movie.LastScannedAt = DateTime.UtcNow;
                 SyncTags(movie, tags);
                 result.Updated++;
@@ -85,11 +86,11 @@ public class MovieService : IMovieService
             {
                 var newMovie = new Movie
                 {
-                    Title = Path.GetFileName(folder),
+                    Title = title,
                     FolderPath = folder,
                     VideoFilePath = videoFile,
                     PosterPath = posterFile,
-                    FileSizeBytes = new FileInfo(videoFile).Length,
+                    FileSizeBytes = GetFileSizeBytes(videoFile),
                     LastScannedAt = DateTime.UtcNow
                 };
 
@@ -99,9 +100,15 @@ public class MovieService : IMovieService
                 }
 
                 db.Movies.Add(newMovie);
-                existingMovies[folder] = newMovie;
+                existingMovies[videoFile] = newMovie;
                 result.Added++;
             }
+        }
+
+        if (discoveredVideos == 0)
+        {
+            _logger.Info($"电影库扫描结束：未找到视频文件。RootPath={rootPath}");
+            return result;
         }
 
         await db.SaveChangesAsync();
@@ -159,46 +166,65 @@ public class MovieService : IMovieService
         if (movie.Title.Equals(title, StringComparison.OrdinalIgnoreCase))
             return movie;
 
-        var oldFolderPath = movie.FolderPath;
-        var parentDir = Path.GetDirectoryName(oldFolderPath);
-        if (string.IsNullOrEmpty(parentDir))
+        var oldVideoPath = movie.VideoFilePath;
+        var folder = Path.GetDirectoryName(oldVideoPath);
+        if (string.IsNullOrEmpty(folder))
         {
-            _logger.Warn($"电影重命名失败：无法获取父目录。MovieId={movieId}，FolderPath={oldFolderPath}");
+            _logger.Warn($"电影重命名失败：无法获取视频所在目录。MovieId={movieId}，VideoFilePath={oldVideoPath}");
             return null;
         }
 
-        var newFolderPath = Path.Combine(parentDir, title);
-        if (Directory.Exists(newFolderPath) &&
-            !string.Equals(newFolderPath, oldFolderPath, StringComparison.OrdinalIgnoreCase))
+        var extension = Path.GetExtension(oldVideoPath);
+        var newVideoPath = Path.Combine(folder, title + extension);
+        if (File.Exists(newVideoPath) &&
+            !string.Equals(newVideoPath, oldVideoPath, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.Warn($"电影重命名失败：目标文件夹已存在。MovieId={movieId}，TargetPath={newFolderPath}");
+            _logger.Warn($"电影重命名失败：目标视频文件已存在。MovieId={movieId}，TargetPath={newVideoPath}");
             return null;
         }
 
-        Directory.Move(oldFolderPath, newFolderPath);
-        _logger.Info($"电影文件夹已重命名：MovieId={movieId}，OldPath={oldFolderPath}，NewPath={newFolderPath}");
+        var newPosterPath = GetRenamedPosterPath(movie.PosterPath, title);
+        if (!string.IsNullOrEmpty(newPosterPath) &&
+            File.Exists(newPosterPath) &&
+            !string.Equals(newPosterPath, movie.PosterPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.Warn($"电影重命名失败：目标海报文件已存在。MovieId={movieId}，TargetPath={newPosterPath}");
+            return null;
+        }
+
+        try
+        {
+            File.Move(oldVideoPath, newVideoPath);
+            _logger.Info($"电影视频文件已重命名：MovieId={movieId}，OldPath={oldVideoPath}，NewPath={newVideoPath}");
+
+            if (!string.IsNullOrEmpty(newPosterPath) &&
+                !string.Equals(newPosterPath, movie.PosterPath, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Move(movie.PosterPath!, newPosterPath);
+                _logger.Info($"电影海报文件已重命名：MovieId={movieId}，OldPath={movie.PosterPath}，NewPath={newPosterPath}");
+                movie.PosterPath = newPosterPath;
+            }
+        }
+        catch
+        {
+            if (File.Exists(newVideoPath) && !File.Exists(oldVideoPath))
+            {
+                try
+                {
+                    File.Move(newVideoPath, oldVideoPath);
+                }
+                catch (Exception rollbackEx)
+                {
+                    _logger.Warn($"电影重命名回滚失败。MovieId={movieId}，OldPath={oldVideoPath}，NewPath={newVideoPath}", rollbackEx);
+                }
+            }
+
+            throw;
+        }
 
         movie.Title = title;
-        movie.FolderPath = newFolderPath;
-
-        if (!string.IsNullOrEmpty(movie.VideoFilePath) &&
-            movie.VideoFilePath.StartsWith(oldFolderPath, StringComparison.OrdinalIgnoreCase))
-        {
-            movie.VideoFilePath = Path.Combine(
-                newFolderPath,
-                movie.VideoFilePath.Substring(oldFolderPath.Length)
-                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        }
-
-        if (!string.IsNullOrEmpty(movie.PosterPath) &&
-            movie.PosterPath.StartsWith(oldFolderPath, StringComparison.OrdinalIgnoreCase))
-        {
-            movie.PosterPath = Path.Combine(
-                newFolderPath,
-                movie.PosterPath.Substring(oldFolderPath.Length)
-                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        }
-
+        movie.FolderPath = folder;
+        movie.VideoFilePath = newVideoPath;
         movie.LastScannedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         _logger.Info($"电影记录已重命名：MovieId={movieId}，Title={title}");
@@ -273,61 +299,234 @@ public class MovieService : IMovieService
         _logger.Info($"电影记录已删除：MovieId={movieId}，Title={movie.Title}，FolderPath={movie.FolderPath}");
     }
 
-    private List<string> FindLeafFolders(string root)
+    private IEnumerable<string> EnumerateVideoFilesRecursive(string rootPath, ScanResult result)
     {
-        var result = new List<string>();
-        FindLeafFoldersCore(root, result);
-        return result;
+        using var enumerator = CreateRecursiveFileEnumerator(rootPath, result, "电影");
+        if (enumerator == null)
+        {
+            yield break;
+        }
+
+        while (true)
+        {
+            string file;
+            try
+            {
+                if (!enumerator.MoveNext())
+                {
+                    yield break;
+                }
+
+                file = enumerator.Current;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                result.Skipped++;
+                _logger.Warn($"无权限读取电影目录。RootPath={rootPath}", ex);
+                yield break;
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                result.Skipped++;
+                _logger.Warn($"电影目录不存在。RootPath={rootPath}", ex);
+                yield break;
+            }
+
+            if (VideoExtensions.Contains(Path.GetExtension(file)))
+            {
+                yield return file;
+            }
+        }
     }
 
-    private void FindLeafFoldersCore(string current, List<string> result)
+    private Dictionary<string, string> BuildPosterIndex(string? posterRootPath)
     {
-        string[] subDirs;
+        var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(posterRootPath))
+        {
+            return index;
+        }
+
+        if (!Directory.Exists(posterRootPath))
+        {
+            _logger.Warn($"电影海报根目录无效，跳过独立海报扫描。PosterRootPath={posterRootPath}");
+            return index;
+        }
+
+        var skipped = new ScanResult();
+        using var enumerator = CreateRecursiveFileEnumerator(posterRootPath, skipped, "电影海报");
+        if (enumerator == null)
+        {
+            return index;
+        }
+
+        while (true)
+        {
+            string file;
+            try
+            {
+                if (!enumerator.MoveNext())
+                {
+                    return index;
+                }
+
+                file = enumerator.Current;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.Warn($"无权限读取电影海报目录。PosterRootPath={posterRootPath}", ex);
+                return index;
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                _logger.Warn($"电影海报目录不存在。PosterRootPath={posterRootPath}", ex);
+                return index;
+            }
+
+            if (!PosterExtensions.Contains(Path.GetExtension(file)))
+            {
+                continue;
+            }
+
+            AddPosterCandidate(index, Path.GetFileNameWithoutExtension(file), file);
+
+            var baseName = Path.GetFileNameWithoutExtension(file);
+            var parentName = Path.GetFileName(Path.GetDirectoryName(file));
+            if (PosterNamePriority.Contains(baseName, StringComparer.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(parentName))
+            {
+                AddPosterCandidate(index, parentName, file);
+            }
+        }
+    }
+
+    private static void AddPosterCandidate(Dictionary<string, string> index, string? key, string file)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        index.TryAdd(key, file);
+    }
+
+    private string? FindPosterFileForVideo(string videoFile, Dictionary<string, string> posterIndex)
+    {
+        var title = Path.GetFileNameWithoutExtension(videoFile);
+        if (posterIndex.TryGetValue(title, out var indexedPoster))
+        {
+            return indexedPoster;
+        }
+
+        var folder = Path.GetDirectoryName(videoFile);
+        if (string.IsNullOrEmpty(folder))
+        {
+            return null;
+        }
+
+        return FindPosterFile(folder, title);
+    }
+
+    private IEnumerator<string>? CreateRecursiveFileEnumerator(string rootPath, ScanResult result, string libraryName)
+    {
         try
         {
-            subDirs = Directory.GetDirectories(current);
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true,
+                ReturnSpecialDirectories = false
+            };
+
+            return Directory.EnumerateFiles(rootPath, "*", options).GetEnumerator();
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.Warn($"无权限访问电影目录：{current}", ex);
-            return;
-        }
-        catch (DirectoryNotFoundException ex)
-        {
-            _logger.Warn($"电影目录不存在：{current}", ex);
-            return;
-        }
-
-        if (subDirs.Length == 0)
-        {
-            result.Add(current);
-            return;
-        }
-
-        foreach (var sub in subDirs)
-            FindLeafFoldersCore(sub, result);
-    }
-
-    private string? FindVideoFile(string folder)
-    {
-        try
-        {
-            return Directory.EnumerateFiles(folder)
-                .FirstOrDefault(f => VideoExtensions.Contains(Path.GetExtension(f)));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.Warn($"无权限读取电影文件夹：{folder}", ex);
+            result.Skipped++;
+            _logger.Warn($"无权限访问{libraryName}根目录：{rootPath}", ex);
             return null;
         }
         catch (DirectoryNotFoundException ex)
         {
-            _logger.Warn($"电影文件夹不存在：{folder}", ex);
+            result.Skipped++;
+            _logger.Warn($"{libraryName}根目录不存在：{rootPath}", ex);
             return null;
         }
     }
 
-    private string? FindPosterFile(string folder)
+    private static string GetAutoPosterFolder(string mediaRootPath, string? posterRootPath, string videoFolder)
+    {
+        if (string.IsNullOrWhiteSpace(posterRootPath) || !Directory.Exists(posterRootPath))
+        {
+            return videoFolder;
+        }
+
+        var relative = Path.GetRelativePath(mediaRootPath, videoFolder);
+        if (relative == "." || relative.StartsWith(".."))
+        {
+            relative = string.Empty;
+        }
+
+        return Path.Combine(posterRootPath, "poster_auto", relative);
+    }
+
+    private long GetFileSizeBytes(string videoFile)
+    {
+        try
+        {
+            return new FileInfo(videoFile).Length;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.Warn($"无权限读取电影文件大小：{videoFile}", ex);
+            return 0;
+        }
+        catch (FileNotFoundException ex)
+        {
+            _logger.Warn($"电影文件不存在，无法读取大小：{videoFile}", ex);
+            return 0;
+        }
+    }
+
+    private static bool ShouldRefreshScannedTitle(Movie movie)
+    {
+        if (string.IsNullOrWhiteSpace(movie.Title))
+        {
+            return true;
+        }
+
+        var oldFolderName = Path.GetFileName(movie.FolderPath);
+        if (string.IsNullOrWhiteSpace(oldFolderName))
+        {
+            return false;
+        }
+
+        return movie.Title.Equals(oldFolderName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? GetRenamedPosterPath(string? posterPath, string title)
+    {
+        if (string.IsNullOrWhiteSpace(posterPath) || !File.Exists(posterPath))
+        {
+            return null;
+        }
+
+        var folder = Path.GetDirectoryName(posterPath);
+        if (string.IsNullOrEmpty(folder))
+        {
+            return null;
+        }
+
+        var extension = Path.GetExtension(posterPath);
+        var oldName = Path.GetFileNameWithoutExtension(posterPath);
+        var suffix = oldName.EndsWith("_poster_auto", StringComparison.OrdinalIgnoreCase)
+            ? "_poster_auto"
+            : string.Empty;
+
+        return Path.Combine(folder, $"{GetSafeFileName(title)}{suffix}{extension}");
+    }
+
+    private string? FindPosterFile(string folder, string? preferredTitle = null)
     {
         List<string> images;
         try
@@ -350,6 +549,14 @@ public class MovieService : IMovieService
         if (images.Count == 0)
             return null;
 
+        if (!string.IsNullOrWhiteSpace(preferredTitle))
+        {
+            var preferredMatch = images.FirstOrDefault(f =>
+                Path.GetFileNameWithoutExtension(f).Equals(preferredTitle, StringComparison.OrdinalIgnoreCase));
+            if (preferredMatch != null)
+                return preferredMatch;
+        }
+
         foreach (var priorityName in PosterNamePriority)
         {
             var match = images.FirstOrDefault(f =>
@@ -361,7 +568,7 @@ public class MovieService : IMovieService
         return images[0];
     }
 
-    private async Task<string?> ExtractPosterFromVideoAsync(string videoPath, string folder)
+    private async Task<string?> ExtractPosterFromVideoAsync(string videoPath, string folder, string title)
     {
         try
         {
@@ -371,7 +578,8 @@ public class MovieService : IMovieService
                 return null;
             }
 
-            var posterPath = Path.Combine(folder, "poster_auto.jpg");
+            Directory.CreateDirectory(folder);
+            var posterPath = Path.Combine(folder, $"{GetSafeFileName(title)}_poster_auto.jpg");
             var args = $"-y -ss 10 -i \"{videoPath}\" -vframes 1 -vf \"scale=1284:-1\" \"{posterPath}\"";
             var psi = new System.Diagnostics.ProcessStartInfo
             {
@@ -409,6 +617,14 @@ public class MovieService : IMovieService
         }
     }
 
+    private static string GetSafeFileName(string fileName)
+    {
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var safeChars = fileName.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray();
+        var safeName = new string(safeChars).Trim();
+        return string.IsNullOrEmpty(safeName) ? "poster" : safeName;
+    }
+
     private static List<string> ExtractTagsFromPath(string root, string folder)
     {
         var rootUri = new DirectoryInfo(root).FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
@@ -424,9 +640,7 @@ public class MovieService : IMovieService
             new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
             StringSplitOptions.RemoveEmptyEntries);
 
-        return parts.Length > 1
-            ? parts.Take(parts.Length - 1).ToList()
-            : new List<string>();
+        return parts.ToList();
     }
 
     private static void SyncTags(Movie movie, List<string> tagNames)

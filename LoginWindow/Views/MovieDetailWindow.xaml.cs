@@ -137,13 +137,13 @@ namespace LoginWindow.Views
                 return;
             }
 
-            var parentDir = Path.GetDirectoryName(_movie.FolderPath);
-            var newFolderPath = Path.Combine(parentDir ?? string.Empty, newTitle);
-            if (Directory.Exists(newFolderPath) &&
-                !string.Equals(newFolderPath, _movie.FolderPath, StringComparison.OrdinalIgnoreCase))
+            var folder = Path.GetDirectoryName(_movie.VideoFilePath);
+            var newVideoPath = Path.Combine(folder ?? string.Empty, newTitle + Path.GetExtension(_movie.VideoFilePath));
+            if (File.Exists(newVideoPath) &&
+                !string.Equals(newVideoPath, _movie.VideoFilePath, StringComparison.OrdinalIgnoreCase))
             {
-                _logger.Warn($"电影重命名校验失败：目标文件夹已存在。MovieId={_movie.Id}，TargetPath={newFolderPath}");
-                CustomMessageBox.Show($"目标文件夹已存在：{newFolderPath}");
+                _logger.Warn($"电影重命名校验失败：目标视频文件已存在。MovieId={_movie.Id}，TargetPath={newVideoPath}");
+                CustomMessageBox.Show($"目标视频文件已存在：{newVideoPath}");
                 return;
             }
 
@@ -180,7 +180,6 @@ namespace LoginWindow.Views
                     }
                 }
 
-                DialogResult = true;
             }
             catch (Exception ex)
             {

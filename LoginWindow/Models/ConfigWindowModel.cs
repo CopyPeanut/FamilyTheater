@@ -17,6 +17,7 @@ namespace LoginWindow.Models
         private readonly IAppLogger _logger;
 
         [Reactive] public string MediaRootPath { get; set; } = string.Empty;
+        [Reactive] public string MoviePosterRootPath { get; set; } = string.Empty;
         [Reactive] public string PictureRootPath { get; set; } = string.Empty;
         [Reactive] public string StatusMessage { get; set; } = string.Empty;
         [Reactive] public bool IsScanning { get; set; }
@@ -47,6 +48,7 @@ namespace LoginWindow.Models
             try
             {
                 MediaRootPath = await _settingService.GetMediaRootPathAsync() ?? string.Empty;
+                MoviePosterRootPath = await _settingService.GetMoviePosterRootPathAsync() ?? string.Empty;
                 PictureRootPath = await _settingService.GetPictureRootPathAsync() ?? string.Empty;
             }
             catch (Exception ex)
@@ -61,7 +63,12 @@ namespace LoginWindow.Models
             var dialog = new FolderBrowserDialog
             {
                 ShowNewFolderButton = true,
-                Description = target == "picture" ? "选择图片根目录" : "选择媒体根目录"
+                Description = target switch
+                {
+                    "picture" => "选择图片根目录",
+                    "poster" => "选择电影海报根目录",
+                    _ => "选择媒体根目录"
+                }
             };
 
             if (dialog.ShowDialog() == DialogResult.OK)
@@ -69,6 +76,10 @@ namespace LoginWindow.Models
                 if (target == "picture")
                 {
                     PictureRootPath = dialog.SelectedPath;
+                }
+                else if (target == "poster")
+                {
+                    MoviePosterRootPath = dialog.SelectedPath;
                 }
                 else
                 {
@@ -87,6 +98,7 @@ namespace LoginWindow.Models
             try
             {
                 await _settingService.SetMediaRootPathAsync(MediaRootPath ?? string.Empty);
+                await _settingService.SetMoviePosterRootPathAsync(MoviePosterRootPath ?? string.Empty);
                 var movieResult = await _movieService.ScanLibraryAsync();
                 var mediaMessage = movieResult.Added == 0 && movieResult.Updated == 0 && movieResult.Skipped == 0
                     ? "电影：未发现可入库的视频文件"

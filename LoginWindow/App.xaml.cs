@@ -114,6 +114,7 @@ public partial class App : System.Windows.Application
                     .Replace("CREATE TABLE \"", "CREATE TABLE IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase);
                 db.Database.ExecuteSqlRaw(idempotentScript);
                 EnsureUserRoleColumn(db);
+                DatabaseSchemaMaintenance.EnsureMovieFileIndexes(db);
 
                 if (db.Users.Any() && !db.Users.Any(user => user.Role == UserRoles.Admin))
                 {

@@ -35,102 +35,160 @@ public class PictureService : IPictureService
 
         _logger.Info($"开始扫描图片库：{rootPath}");
 
-        string[] subDirs;
-        try
-        {
-            subDirs = Directory.GetDirectories(rootPath);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.Warn($"无权限访问图片根目录：{rootPath}", ex);
-            return result;
-        }
-        catch (DirectoryNotFoundException ex)
-        {
-            _logger.Warn($"图片根目录不存在：{rootPath}", ex);
-            return result;
-        }
-
-        if (subDirs.Length == 0)
-        {
-            _logger.Info($"图片库扫描结束：未找到子文件夹。RootPath={rootPath}");
-            return result;
-        }
-
         using var db = _dbContextFactory.CreateDbContext();
         var existingPictures = await db.Pictures
             .Include(p => p.PictureTags)
             .ToDictionaryAsync(p => p.FilePath, p => p, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var subDir in subDirs)
+        var discoveredImages = 0;
+        foreach (var imageFile in EnumerateImageFilesRecursive(rootPath, result))
         {
-            var tagName = Path.GetFileName(subDir);
+            discoveredImages++;
 
-            List<string> imageFiles;
-            try
-            {
-                imageFiles = Directory.EnumerateFiles(subDir)
-                    .Where(f => ImageExtensions.Contains(Path.GetExtension(f)))
-                    .ToList();
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.Warn($"无权限读取图片文件夹：{subDir}", ex);
-                continue;
-            }
-            catch (DirectoryNotFoundException ex)
-            {
-                _logger.Warn($"图片文件夹不存在：{subDir}", ex);
-                continue;
-            }
+            var folderPath = Path.GetDirectoryName(imageFile) ?? rootPath;
+            var tagName = GetTagName(rootPath, folderPath);
+            var fileName = Path.GetFileNameWithoutExtension(imageFile);
+            var fileSizeBytes = GetFileSizeBytes(imageFile);
 
-            if (imageFiles.Count == 0)
+            if (existingPictures.TryGetValue(imageFile, out var picture))
             {
-                result.Skipped++;
-                continue;
-            }
+                picture.FileName = fileName;
+                picture.FolderPath = folderPath;
+                picture.FileSizeBytes = fileSizeBytes;
+                picture.LastScannedAt = DateTime.UtcNow;
 
-            foreach (var imageFile in imageFiles)
-            {
-                var fileName = Path.GetFileNameWithoutExtension(imageFile);
-
-                if (existingPictures.TryGetValue(imageFile, out var picture))
+                if (!picture.PictureTags.Any(pt => pt.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
                 {
-                    picture.FileName = fileName;
-                    picture.FolderPath = subDir;
-                    picture.FileSizeBytes = new FileInfo(imageFile).Length;
-                    picture.LastScannedAt = DateTime.UtcNow;
-
-                    if (!picture.PictureTags.Any(pt => pt.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = tagName });
-                    }
-
-                    result.Updated++;
+                    picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = tagName });
                 }
-                else
-                {
-                    var newPicture = new Picture
-                    {
-                        FilePath = imageFile,
-                        FileName = fileName,
-                        FolderPath = subDir,
-                        FileSizeBytes = new FileInfo(imageFile).Length,
-                        LastScannedAt = DateTime.UtcNow
-                    };
 
-                    newPicture.PictureTags.Add(new PictureTag { Picture = newPicture, TagName = tagName });
-
-                    db.Pictures.Add(newPicture);
-                    existingPictures[imageFile] = newPicture;
-                    result.Added++;
-                }
+                result.Updated++;
             }
+            else
+            {
+                var newPicture = new Picture
+                {
+                    FilePath = imageFile,
+                    FileName = fileName,
+                    FolderPath = folderPath,
+                    FileSizeBytes = fileSizeBytes,
+                    LastScannedAt = DateTime.UtcNow
+                };
+
+                newPicture.PictureTags.Add(new PictureTag { Picture = newPicture, TagName = tagName });
+
+                db.Pictures.Add(newPicture);
+                existingPictures[imageFile] = newPicture;
+                result.Added++;
+            }
+        }
+
+        if (discoveredImages == 0)
+        {
+            _logger.Info($"图片库扫描结束：未找到图片文件。RootPath={rootPath}");
+            return result;
         }
 
         await db.SaveChangesAsync();
         _logger.Info($"图片库扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
         return result;
+    }
+
+    private IEnumerable<string> EnumerateImageFilesRecursive(string rootPath, ScanResult result)
+    {
+        using var enumerator = CreateRecursiveFileEnumerator(rootPath, result);
+        if (enumerator == null)
+        {
+            yield break;
+        }
+
+        while (true)
+        {
+            string file;
+            try
+            {
+                if (!enumerator.MoveNext())
+                {
+                    yield break;
+                }
+                file = enumerator.Current;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                result.Skipped++;
+                _logger.Warn($"无权限读取图片目录。RootPath={rootPath}", ex);
+                yield break;
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                result.Skipped++;
+                _logger.Warn($"图片目录不存在。RootPath={rootPath}", ex);
+                yield break;
+            }
+
+            if (ImageExtensions.Contains(Path.GetExtension(file)))
+            {
+                yield return file;
+            }
+        }
+    }
+
+    private IEnumerator<string>? CreateRecursiveFileEnumerator(string rootPath, ScanResult result)
+    {
+        try
+        {
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true,
+                ReturnSpecialDirectories = false
+            };
+
+            return Directory.EnumerateFiles(rootPath, "*", options).GetEnumerator();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            result.Skipped++;
+            _logger.Warn($"无权限访问图片根目录：{rootPath}", ex);
+            return null;
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            result.Skipped++;
+            _logger.Warn($"图片根目录不存在：{rootPath}", ex);
+            return null;
+        }
+    }
+
+    private static string GetTagName(string rootPath, string folderPath)
+    {
+        var normalizedRoot = Path.GetFullPath(rootPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var normalizedFolder = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        if (string.Equals(normalizedRoot, normalizedFolder, StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.GetFileName(normalizedRoot) is { Length: > 0 } rootName ? rootName : "图片根目录";
+        }
+
+        return Path.GetFileName(normalizedFolder) is { Length: > 0 } folderName ? folderName : "图片";
+    }
+
+    private long GetFileSizeBytes(string imageFile)
+    {
+        try
+        {
+            return new FileInfo(imageFile).Length;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.Warn($"无权限读取图片文件大小：{imageFile}", ex);
+            return 0;
+        }
+        catch (FileNotFoundException ex)
+        {
+            _logger.Warn($"图片文件不存在，无法读取大小：{imageFile}", ex);
+            return 0;
+        }
     }
 
     public async Task<List<Picture>> GetAllPicturesAsync()

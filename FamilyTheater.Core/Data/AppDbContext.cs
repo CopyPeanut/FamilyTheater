@@ -33,7 +33,8 @@ namespace FamilyTheater.Core.Data
             // Movie 配置
             modelBuilder.Entity<Movie>(entity =>
             {
-                entity.HasIndex(m => m.FolderPath).IsUnique();
+                entity.HasIndex(m => m.FolderPath);
+                entity.HasIndex(m => m.VideoFilePath).IsUnique();
                 entity.HasIndex(m => m.Title);
             });
 

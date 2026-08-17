@@ -7,6 +7,7 @@ namespace FamilyTheater.Core.Services;
 public class SettingService : ISettingService
 {
     private const string MediaRootPathKey = "MediaRootPath";
+    private const string MoviePosterRootPathKey = "MoviePosterRootPath";
     private const string PictureRootPathKey = "PictureRootPath";
 
     private readonly ILibraryDbContextFactory _dbContextFactory;
@@ -50,6 +51,10 @@ public class SettingService : ISettingService
     public Task<string?> GetMediaRootPathAsync() => GetAsync(MediaRootPathKey);
 
     public Task SetMediaRootPathAsync(string path) => SetAsync(MediaRootPathKey, path);
+
+    public Task<string?> GetMoviePosterRootPathAsync() => GetAsync(MoviePosterRootPathKey);
+
+    public Task SetMoviePosterRootPathAsync(string path) => SetAsync(MoviePosterRootPathKey, path);
 
     public Task<string?> GetPictureRootPathAsync() => GetAsync(PictureRootPathKey);
 
