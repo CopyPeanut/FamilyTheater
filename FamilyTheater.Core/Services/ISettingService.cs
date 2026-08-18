@@ -36,6 +36,14 @@ namespace FamilyTheater.Core.Services
         /// <returns></returns>
         Task SetMoviePosterRootPathAsync(string path);
 
+        Task<string?> GetGameRootPathAsync();
+
+        Task SetGameRootPathAsync(string path);
+
+        Task<string?> GetGamePosterRootPathAsync();
+
+        Task SetGamePosterRootPathAsync(string path);
+
         /// <summary>
         /// 读取图片根目录配置（key = "PictureRootPath"）。
         /// </summary>

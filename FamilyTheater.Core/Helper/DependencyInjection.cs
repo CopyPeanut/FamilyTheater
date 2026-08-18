@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<ISettingService, SettingService>();
         services.AddScoped<IMovieService, MovieService>();
         services.AddScoped<IPictureService, PictureService>();
+        services.AddScoped<IGameService, GameService>();
 
         return services;
     }

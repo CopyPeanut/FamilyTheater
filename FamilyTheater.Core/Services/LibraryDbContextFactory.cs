@@ -53,7 +53,9 @@ public class LibraryDbContextFactory : ILibraryDbContextFactory
 
             using var db = new AppDbContext(options);
             db.Database.EnsureCreated();
+            DatabaseSchemaMaintenance.EnsureCoreTables(db);
             DatabaseSchemaMaintenance.EnsureMovieFileIndexes(db);
+            DatabaseSchemaMaintenance.EnsureGameIndexes(db);
             _initializedDbPaths.Add(dbPath);
         }
     }

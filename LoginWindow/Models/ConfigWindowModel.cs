@@ -14,11 +14,14 @@ namespace LoginWindow.Models
         private readonly ISettingService _settingService;
         private readonly IMovieService _movieService;
         private readonly IPictureService _pictureService;
+        private readonly IGameService _gameService;
         private readonly IAppLogger _logger;
 
         [Reactive] public string MediaRootPath { get; set; } = string.Empty;
         [Reactive] public string MoviePosterRootPath { get; set; } = string.Empty;
         [Reactive] public string PictureRootPath { get; set; } = string.Empty;
+        [Reactive] public string GameRootPath { get; set; } = string.Empty;
+        [Reactive] public string GamePosterRootPath { get; set; } = string.Empty;
         [Reactive] public string StatusMessage { get; set; } = string.Empty;
         [Reactive] public bool IsScanning { get; set; }
 
@@ -29,11 +32,13 @@ namespace LoginWindow.Models
             ISettingService settingService,
             IMovieService movieService,
             IPictureService pictureService,
+            IGameService gameService,
             IAppLogger logger)
         {
             _settingService = settingService;
             _movieService = movieService;
             _pictureService = pictureService;
+            _gameService = gameService;
             _logger = logger;
 
             var canSave = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning);
@@ -50,6 +55,8 @@ namespace LoginWindow.Models
                 MediaRootPath = await _settingService.GetMediaRootPathAsync() ?? string.Empty;
                 MoviePosterRootPath = await _settingService.GetMoviePosterRootPathAsync() ?? string.Empty;
                 PictureRootPath = await _settingService.GetPictureRootPathAsync() ?? string.Empty;
+                GameRootPath = await _settingService.GetGameRootPathAsync() ?? string.Empty;
+                GamePosterRootPath = await _settingService.GetGamePosterRootPathAsync() ?? string.Empty;
             }
             catch (Exception ex)
             {
@@ -67,23 +74,31 @@ namespace LoginWindow.Models
                 {
                     "picture" => "选择图片根目录",
                     "poster" => "选择电影海报根目录",
+                    "game" => "选择游戏根目录",
+                    "gamePoster" => "选择游戏海报根目录",
                     _ => "选择媒体根目录"
                 }
             };
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                if (target == "picture")
+                switch (target)
                 {
-                    PictureRootPath = dialog.SelectedPath;
-                }
-                else if (target == "poster")
-                {
-                    MoviePosterRootPath = dialog.SelectedPath;
-                }
-                else
-                {
-                    MediaRootPath = dialog.SelectedPath;
+                    case "picture":
+                        PictureRootPath = dialog.SelectedPath;
+                        break;
+                    case "poster":
+                        MoviePosterRootPath = dialog.SelectedPath;
+                        break;
+                    case "game":
+                        GameRootPath = dialog.SelectedPath;
+                        break;
+                    case "gamePoster":
+                        GamePosterRootPath = dialog.SelectedPath;
+                        break;
+                    default:
+                        MediaRootPath = dialog.SelectedPath;
+                        break;
                 }
             }
 
@@ -110,7 +125,14 @@ namespace LoginWindow.Models
                     ? "图片：未发现可入库的图片文件"
                     : $"图片：新增 {pictureResult.Added} 张，更新 {pictureResult.Updated} 张，跳过 {pictureResult.Skipped} 个文件夹";
 
-                StatusMessage = $"{mediaMessage}；{pictureMessage}";
+                await _settingService.SetGameRootPathAsync(GameRootPath ?? string.Empty);
+                await _settingService.SetGamePosterRootPathAsync(GamePosterRootPath ?? string.Empty);
+                var gameResult = await _gameService.ScanLibraryAsync();
+                var gameMessage = gameResult.Added == 0 && gameResult.Updated == 0 && gameResult.Skipped == 0
+                    ? "游戏：未发现可入库的游戏文件夹"
+                    : $"游戏：新增 {gameResult.Added} 个，更新 {gameResult.Updated} 个，跳过 {gameResult.Skipped} 个文件夹";
+
+                StatusMessage = $"{mediaMessage}；{pictureMessage}；{gameMessage}";
             }
             catch (Exception ex)
             {

@@ -3,6 +3,8 @@ using FamilyTheater.Core.Logger;
 using LoginWindow.Models;
 using ReactiveUI;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -171,6 +173,99 @@ namespace LoginWindow.Views
             };
             detail.ShowDialog();
             _ = _viewModel.LoadPicturesAsync();
+        }
+
+        private async void GameCard_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement { DataContext: Game game })
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(game.LaunchPath) && File.Exists(game.LaunchPath))
+            {
+                LaunchGame(game.LaunchPath);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(game.FolderPath) || !Directory.Exists(game.FolderPath))
+            {
+                _logger.Warn($"打开游戏失败：游戏文件夹不存在。GameId={game.Id}, FolderPath={game.FolderPath}");
+                CustomMessageBox.Show($"游戏文件夹不存在：\n{game.FolderPath}\n\n记录会保留在数据库中，重新安装后可在详情页重新选择启动项。");
+                return;
+            }
+
+            var candidates = await _viewModel.GameService.GetExecutableCandidatesAsync(game.Id);
+            if (candidates.Count == 0)
+            {
+                _logger.Warn($"打开游戏失败：未找到可用 exe。GameId={game.Id}, FolderPath={game.FolderPath}");
+                CustomMessageBox.Show($"没有在游戏目录中找到可用的 exe：\n{game.FolderPath}");
+                return;
+            }
+
+            var selectedPath = candidates.Count == 1
+                ? candidates[0]
+                : ChooseGameExecutable(game, candidates);
+
+            if (string.IsNullOrWhiteSpace(selectedPath))
+            {
+                return;
+            }
+
+            var updated = await _viewModel.GameService.SetLaunchPathAsync(game.Id, selectedPath);
+            if (updated?.LaunchPath == null)
+            {
+                CustomMessageBox.Show("启动项保存失败，请确认选择的是游戏目录内的 exe。");
+                return;
+            }
+
+            game.LaunchPath = updated.LaunchPath;
+            LaunchGame(updated.LaunchPath);
+        }
+
+        private async void GameCard_RightClick(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement { DataContext: Game game })
+            {
+                return;
+            }
+
+            var detail = new GameDetailWindow(game, _viewModel.GameService, _logger)
+            {
+                Owner = this
+            };
+            detail.ShowDialog();
+            await _viewModel.LoadGamesAsync();
+        }
+
+        private string? ChooseGameExecutable(Game game, IReadOnlyList<string> candidates)
+        {
+            var dialog = new ExecutableSelectionWindow(game.FolderPath, candidates)
+            {
+                Owner = this
+            };
+
+            return dialog.ShowDialog() == true ? dialog.SelectedPath : null;
+        }
+
+        private void LaunchGame(string launchPath)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = launchPath,
+                    WorkingDirectory = Path.GetDirectoryName(launchPath) ?? string.Empty,
+                    UseShellExecute = true
+                };
+                Process.Start(startInfo);
+                _logger.Info($"游戏已启动：LaunchPath={launchPath}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"启动游戏异常：LaunchPath={launchPath}", ex);
+                CustomMessageBox.Show($"启动失败：\n{ex.Message}");
+            }
         }
     }
 }

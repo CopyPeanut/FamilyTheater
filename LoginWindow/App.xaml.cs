@@ -107,14 +107,10 @@ public partial class App : System.Windows.Application
             {
                 db.Database.EnsureCreated();
 
-                var script = db.Database.GenerateCreateScript();
-                var idempotentScript = script
-                    .Replace("CREATE UNIQUE INDEX \"", "CREATE UNIQUE INDEX IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase)
-                    .Replace("CREATE INDEX \"", "CREATE INDEX IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase)
-                    .Replace("CREATE TABLE \"", "CREATE TABLE IF NOT EXISTS \"", StringComparison.OrdinalIgnoreCase);
-                db.Database.ExecuteSqlRaw(idempotentScript);
+                DatabaseSchemaMaintenance.EnsureCoreTables(db);
                 EnsureUserRoleColumn(db);
                 DatabaseSchemaMaintenance.EnsureMovieFileIndexes(db);
+                DatabaseSchemaMaintenance.EnsureGameIndexes(db);
 
                 if (db.Users.Any() && !db.Users.Any(user => user.Role == UserRoles.Admin))
                 {

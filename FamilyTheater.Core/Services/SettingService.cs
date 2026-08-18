@@ -9,6 +9,8 @@ public class SettingService : ISettingService
     private const string MediaRootPathKey = "MediaRootPath";
     private const string MoviePosterRootPathKey = "MoviePosterRootPath";
     private const string PictureRootPathKey = "PictureRootPath";
+    private const string GameRootPathKey = "GameRootPath";
+    private const string GamePosterRootPathKey = "GamePosterRootPath";
 
     private readonly ILibraryDbContextFactory _dbContextFactory;
     private readonly IAppLogger _logger;
@@ -55,6 +57,14 @@ public class SettingService : ISettingService
     public Task<string?> GetMoviePosterRootPathAsync() => GetAsync(MoviePosterRootPathKey);
 
     public Task SetMoviePosterRootPathAsync(string path) => SetAsync(MoviePosterRootPathKey, path);
+
+    public Task<string?> GetGameRootPathAsync() => GetAsync(GameRootPathKey);
+
+    public Task SetGameRootPathAsync(string path) => SetAsync(GameRootPathKey, path);
+
+    public Task<string?> GetGamePosterRootPathAsync() => GetAsync(GamePosterRootPathKey);
+
+    public Task SetGamePosterRootPathAsync(string path) => SetAsync(GamePosterRootPathKey, path);
 
     public Task<string?> GetPictureRootPathAsync() => GetAsync(PictureRootPathKey);
 

@@ -428,6 +428,53 @@
                   </ItemsControl>
               </ScrollViewer>
 
+              <!-- 游戏展示区域(Grid.Row=2) -->
+              <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
+                            Visibility="{Binding ActiveCategory, Converter={StaticResource CategoryToVisibility}, ConverterParameter=game}">
+                  <ItemsControl ItemsSource="{Binding CurrentPageGames}">
+                      <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                              <WrapPanel Orientation="Horizontal" />
+                          </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                              <Border Width="180" Height="280" Margin="10" Background="#2A2A28"
+                                      CornerRadius="8" ClipToBounds="True" Cursor="Hand"
+                                      MouseLeftButtonDown="GameCard_Click"
+                                      MouseRightButtonDown="GameCard_RightClick">
+                                  <StackPanel>
+                                      <Grid Width="180" Height="240" Background="#1A1A19">
+                                          <Image Source="{Binding PosterPath, Converter={StaticResource StringToImage}}"
+                                                 Stretch="UniformToFill"/>
+                                          <Grid>
+                                              <Grid.Style>
+                                                  <Style TargetType="Grid">
+                                                      <Setter Property="Visibility" Value="Collapsed"/>
+                                                      <Style.Triggers>
+                                                          <DataTrigger Binding="{Binding PosterPath}" Value="{x:Null}">
+                                                              <Setter Property="Visibility" Value="Visible"/>
+                                                          </DataTrigger>
+                                                      </Style.Triggers>
+                                                  </Style>
+                                              </Grid.Style>
+                                              <TextBlock Text="GAME" FontSize="28" FontWeight="Bold"
+                                                         Foreground="#666666"
+                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                          </Grid>
+                                      </Grid>
+
+                                      <TextBlock Text="{Binding Title}" Foreground="#E0E0E0" FontSize="13"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                 Margin="5,8,5,5" TextTrimming="CharacterEllipsis"
+                                                 TextWrapping="NoWrap" MaxWidth="170"/>
+                                  </StackPanel>
+                              </Border>
+                          </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+              </ScrollViewer>
+
             <!-- 分页控件区域 -->
             <Border Grid.Row="3" Background="#f1b054" CornerRadius="10,10,0,0" Padding="15,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">

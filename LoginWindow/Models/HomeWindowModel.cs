@@ -32,6 +32,7 @@ namespace LoginWindow.Models
         private readonly IUserService _userService;
         private readonly IMovieService _movieService;
         private readonly IPictureService _pictureService;
+        private readonly IGameService _gameService;
         private readonly ICurrentUserSession _currentUserSession;
         private readonly Func<ConfigWindow> _configWindowFactory;
         private readonly Func<UserPermissionsWindow> _userPermissionsWindowFactory;
@@ -41,6 +42,8 @@ namespace LoginWindow.Models
         public IMovieService MovieService => _movieService;
 
         public IPictureService PictureService => _pictureService;
+
+        public IGameService GameService => _gameService;
 
         [Reactive] public int CurrentPage { get; set; } = 1;
         [Reactive] public int TotalPages { get; set; } = 1;
@@ -54,6 +57,7 @@ namespace LoginWindow.Models
 
         public ObservableCollection<Movie> CurrentPageMovies { get; } = new();
         public ObservableCollection<Picture> CurrentPagePictures { get; } = new();
+        public ObservableCollection<Game> CurrentPageGames { get; } = new();
         public ObservableCollection<TagViewModel> Tags { get; } = new();
         public ObservableCollection<int?> PageNumbers { get; } = new();
 
@@ -78,6 +82,7 @@ namespace LoginWindow.Models
             IUserService userService,
             IMovieService movieService,
             IPictureService pictureService,
+            IGameService gameService,
             ICurrentUserSession currentUserSession,
             Func<ConfigWindow> configWindowFactory,
             Func<UserPermissionsWindow> userPermissionsWindowFactory,
@@ -86,6 +91,7 @@ namespace LoginWindow.Models
             _userService = userService;
             _movieService = movieService;
             _pictureService = pictureService;
+            _gameService = gameService;
             _currentUserSession = currentUserSession;
             _configWindowFactory = configWindowFactory;
             _userPermissionsWindowFactory = userPermissionsWindowFactory;
@@ -107,7 +113,15 @@ namespace LoginWindow.Models
                     loadTagsAsync: _pictureService.GetAllTagsAsync,
                     getSearchText: picture => picture.FileName,
                     getItemTags: picture => picture.PictureTags?.Select(tag => tag.TagName) ?? Enumerable.Empty<string>(),
-                    publishPageItems: ReplaceCurrentPictures)
+                    publishPageItems: ReplaceCurrentPictures),
+
+                ["game"] = new CategoryHandler<Game>(
+                    owner: this,
+                    loadItemsAsync: async () => await _gameService.GetAllGamesAsync() ?? new List<Game>(),
+                    loadTagsAsync: _gameService.GetAllTagsAsync,
+                    getSearchText: game => game.Title,
+                    getItemTags: game => game.GameTags?.Select(tag => tag.TagName) ?? Enumerable.Empty<string>(),
+                    publishPageItems: ReplaceCurrentGames)
             };
 
             var canMoveBack = this.WhenAnyValue(x => x.CurrentPage, page => page > 1);
@@ -197,6 +211,11 @@ namespace LoginWindow.Models
             return LoadCategoryAsync("picture");
         }
 
+        public Task LoadGamesAsync()
+        {
+            return LoadCategoryAsync("game");
+        }
+
         private async Task LoadCategoryAsync(string category)
         {
             ActiveCategory = category;
@@ -273,6 +292,7 @@ namespace LoginWindow.Models
         private void ReplaceCurrentMovies(IReadOnlyList<Movie> movies)
         {
             CurrentPagePictures.Clear();
+            CurrentPageGames.Clear();
             CurrentPageMovies.Clear();
 
             foreach (var movie in movies)
@@ -284,11 +304,24 @@ namespace LoginWindow.Models
         private void ReplaceCurrentPictures(IReadOnlyList<Picture> pictures)
         {
             CurrentPageMovies.Clear();
+            CurrentPageGames.Clear();
             CurrentPagePictures.Clear();
 
             foreach (var picture in pictures)
             {
                 CurrentPagePictures.Add(picture);
+            }
+        }
+
+        private void ReplaceCurrentGames(IReadOnlyList<Game> games)
+        {
+            CurrentPageMovies.Clear();
+            CurrentPagePictures.Clear();
+            CurrentPageGames.Clear();
+
+            foreach (var game in games)
+            {
+                CurrentPageGames.Add(game);
             }
         }
 
@@ -326,6 +359,7 @@ namespace LoginWindow.Models
         {
             CurrentPageMovies.Clear();
             CurrentPagePictures.Clear();
+            CurrentPageGames.Clear();
         }
 
         private void RefreshPageNumbers()
