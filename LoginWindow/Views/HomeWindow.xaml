@@ -305,6 +305,7 @@
                                 <Button Content="{Binding Name}"
                     Command="{Binding DataContext.ToggleTagCmd, RelativeSource={RelativeSource AncestorType=Window}}"
                     CommandParameter="{Binding Name}"
+                    MouseRightButtonUp="TagButton_RightClick"
                     Margin="0,0,8,8" Padding="12,4" FontSize="13"
                     Cursor="Hand" BorderThickness="0">
                                     <Button.Style>

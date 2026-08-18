@@ -216,6 +216,30 @@ namespace LoginWindow.Models
             return LoadCategoryAsync("game");
         }
 
+        public async Task DeleteActiveTagAsync(string tagName)
+        {
+            var name = tagName.Trim();
+            if (string.IsNullOrEmpty(name))
+            {
+                return;
+            }
+
+            if (ActiveCategory.Equals("movie", StringComparison.OrdinalIgnoreCase))
+            {
+                await _movieService.DeleteTagAsync(name);
+            }
+            else if (ActiveCategory.Equals("picture", StringComparison.OrdinalIgnoreCase))
+            {
+                await _pictureService.DeleteTagAsync(name);
+            }
+            else if (ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase))
+            {
+                await _gameService.DeleteTagAsync(name);
+            }
+
+            await LoadCategoryAsync(ActiveCategory);
+        }
+
         private async Task LoadCategoryAsync(string category)
         {
             ActiveCategory = category;

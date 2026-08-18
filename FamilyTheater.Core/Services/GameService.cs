@@ -207,6 +207,25 @@ public class GameService : IGameService
         _logger.Info($"游戏标签已移除：GameId={gameId}，Tag={name}");
     }
 
+    public async Task DeleteTagAsync(string tagName)
+    {
+        var name = tagName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            _logger.Warn("删除游戏标签跳过：标签为空");
+            return;
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var links = await db.GameTags
+            .Where(gt => gt.TagName == name)
+            .ToListAsync();
+
+        db.GameTags.RemoveRange(links);
+        await db.SaveChangesAsync();
+        _logger.Info($"游戏标签已删除：Tag={name}, Count={links.Count}");
+    }
+
     public async Task DeleteGameAsync(int gameId)
     {
         using var db = _dbContextFactory.CreateDbContext();

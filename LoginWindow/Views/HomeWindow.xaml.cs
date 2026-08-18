@@ -175,6 +175,23 @@ namespace LoginWindow.Views
             _ = _viewModel.LoadPicturesAsync();
         }
 
+        private async void TagButton_RightClick(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+
+            if (sender is not FrameworkElement { DataContext: TagViewModel tagViewModel })
+            {
+                return;
+            }
+
+            if (!CustomMessageBox.ShowDialog($"是否删除标签：{tagViewModel.Name}？"))
+            {
+                return;
+            }
+
+            await _viewModel.DeleteActiveTagAsync(tagViewModel.Name);
+        }
+
         private async void GameCard_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is not FrameworkElement { DataContext: Game game })

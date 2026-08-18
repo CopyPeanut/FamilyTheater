@@ -18,6 +18,8 @@ public interface IGameService
 
     Task RemoveTagFromGameAsync(int gameId, string tagName);
 
+    Task DeleteTagAsync(string tagName);
+
     Task DeleteGameAsync(int gameId);
 
     Task<List<string>> GetExecutableCandidatesAsync(int gameId);

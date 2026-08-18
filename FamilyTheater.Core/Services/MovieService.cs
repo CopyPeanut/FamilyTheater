@@ -281,6 +281,25 @@ public class MovieService : IMovieService
         _logger.Info($"电影标签已移除：MovieId={movieId}，Tag={name}");
     }
 
+    public async Task DeleteTagAsync(string tagName)
+    {
+        var name = tagName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            _logger.Warn("删除电影标签跳过：标签为空");
+            return;
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var links = await db.MovieTags
+            .Where(mt => mt.TagName == name)
+            .ToListAsync();
+
+        db.MovieTags.RemoveRange(links);
+        await db.SaveChangesAsync();
+        _logger.Info($"电影标签已删除：Tag={name}, Count={links.Count}");
+    }
+
     public async Task DeleteMovieAsync(int movieId)
     {
         using var db = _dbContextFactory.CreateDbContext();

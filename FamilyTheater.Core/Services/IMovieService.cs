@@ -34,6 +34,8 @@ public interface IMovieService
     /// </summary>
     Task RemoveTagFromMovieAsync(int movieId, string tagName);
 
+    Task DeleteTagAsync(string tagName);
+
     /// <summary>
     /// 获取单个电影（含标签），用于详情弹窗。
     /// </summary>

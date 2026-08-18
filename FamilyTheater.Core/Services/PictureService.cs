@@ -269,6 +269,25 @@ public class PictureService : IPictureService
         _logger.Info($"图片标签已移除：PictureId={pictureId}，Tag={name}");
     }
 
+    public async Task DeleteTagAsync(string tagName)
+    {
+        var name = tagName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            _logger.Warn("删除图片标签跳过：标签为空");
+            return;
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var links = await db.PictureTags
+            .Where(pt => pt.TagName == name)
+            .ToListAsync();
+
+        db.PictureTags.RemoveRange(links);
+        await db.SaveChangesAsync();
+        _logger.Info($"图片标签已删除：Tag={name}, Count={links.Count}");
+    }
+
     public async Task DeletePictureAsync(int pictureId)
     {
         using var db = _dbContextFactory.CreateDbContext();
