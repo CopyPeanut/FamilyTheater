@@ -6,8 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reactive.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace LoginWindow.Views
 {
@@ -16,6 +18,8 @@ namespace LoginWindow.Views
         private readonly HomeWindowModel _viewModel;
         private readonly IAppLogger _logger;
         private readonly Func<Login> _loginWindowFactory;
+        private readonly DispatcherTimer _pageWheelTimer;
+        private int _pendingPageWheelDirection;
 
         public static readonly DependencyProperty ViewModelProperty =
             DependencyProperty.Register(
@@ -48,6 +52,11 @@ namespace LoginWindow.Views
             _viewModel = viewModel;
             _logger = logger;
             _loginWindowFactory = loginWindowFactory;
+            _pageWheelTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(220)
+            };
+            _pageWheelTimer.Tick += PageWheelTimer_Tick;
 
             DataContext = viewModel;
             ViewModel = viewModel;
@@ -55,11 +64,90 @@ namespace LoginWindow.Views
             InputBindings.Add(new KeyBinding(viewModel.NextPageCmd, Key.Right, ModifierKeys.None));
             viewModel.LogoutRequested += OnLogoutRequested;
             Loaded += HomeWindow_Loaded;
+            ContentRendered += HomeWindow_ContentRendered;
+            SizeChanged += HomeWindow_SizeChanged;
+            viewModel.WhenAnyValue(model => model.ActiveCategory)
+                .Skip(1)
+                .Subscribe(_ => ScheduleDynamicPageSizeUpdate());
         }
 
         private async void HomeWindow_Loaded(object sender, RoutedEventArgs e)
         {
             await _viewModel.LoadMoviesAsync();
+            ScheduleDynamicPageSizeUpdate();
+        }
+
+        private void HomeWindow_ContentRendered(object? sender, EventArgs e)
+        {
+            ScheduleDynamicPageSizeUpdate();
+        }
+
+        private void HomeWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ScheduleDynamicPageSizeUpdate();
+        }
+
+        private void ScheduleDynamicPageSizeUpdate()
+        {
+            Dispatcher.BeginInvoke(UpdateDynamicPageSize, DispatcherPriority.ContextIdle);
+        }
+
+        private void UpdateDynamicPageSize()
+        {
+            var viewport = GetActiveItemsViewport();
+            if (viewport == null ||
+                viewport.ActualWidth <= 0 ||
+                viewport.ActualHeight <= 0)
+            {
+                return;
+            }
+
+            var (itemWidth, itemHeight) = GetActiveItemFootprint();
+            var columns = Math.Max(1, (int)Math.Floor(viewport.ActualWidth / itemWidth));
+            var rows = Math.Max(1, (int)Math.Floor(viewport.ActualHeight / itemHeight));
+            _viewModel.UpdatePageSize(columns * rows);
+        }
+
+        private FrameworkElement? GetActiveItemsViewport()
+        {
+            return _viewModel.ActiveCategory.Equals("picture", StringComparison.OrdinalIgnoreCase)
+                ? PictureItemsViewport
+                : _viewModel.ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase)
+                    ? GameItemsViewport
+                    : MovieItemsViewport;
+        }
+
+        private (double Width, double Height) GetActiveItemFootprint()
+        {
+            return _viewModel.ActiveCategory.Equals("picture", StringComparison.OrdinalIgnoreCase)
+                ? (216, 216)
+                : _viewModel.ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase)
+                    ? (200, 300)
+                    : (196, 296);
+        }
+
+        private void ItemsViewport_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            _pendingPageWheelDirection = e.Delta < 0 ? 1 : -1;
+            _pageWheelTimer.Stop();
+            _pageWheelTimer.Start();
+            e.Handled = true;
+        }
+
+        private void PageWheelTimer_Tick(object? sender, EventArgs e)
+        {
+            _pageWheelTimer.Stop();
+
+            if (_pendingPageWheelDirection > 0 && _viewModel.CurrentPage < _viewModel.TotalPages)
+            {
+                _viewModel.CurrentPage++;
+            }
+            else if (_pendingPageWheelDirection < 0 && _viewModel.CurrentPage > 1)
+            {
+                _viewModel.CurrentPage--;
+            }
+
+            _pendingPageWheelDirection = 0;
         }
 
         private void OnLogoutRequested()

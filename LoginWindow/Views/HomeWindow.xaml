@@ -347,7 +347,8 @@
             </Border>
 
               <!-- 电影海报展示区 (Grid.Row=2) -->
-              <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
+              <ScrollViewer x:Name="MovieItemsViewport" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
+                            PreviewMouseWheel="ItemsViewport_PreviewMouseWheel"
                             Visibility="{Binding ActiveCategory, Converter={StaticResource CategoryToVisibility}, ConverterParameter=movie}">
                   <ItemsControl ItemsSource="{Binding CurrentPageMovies}">
                       <ItemsControl.ItemsPanel>
@@ -406,7 +407,8 @@
               </ScrollViewer>
 
               <!-- 图片展示区 (Grid.Row=2) -->
-              <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
+              <ScrollViewer x:Name="PictureItemsViewport" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
+                            PreviewMouseWheel="ItemsViewport_PreviewMouseWheel"
                             Visibility="{Binding ActiveCategory, Converter={StaticResource CategoryToVisibility}, ConverterParameter=picture}">
                   <ItemsControl ItemsSource="{Binding CurrentPagePictures}">
                       <ItemsControl.ItemsPanel>
@@ -430,7 +432,8 @@
               </ScrollViewer>
 
               <!-- 游戏展示区域(Grid.Row=2) -->
-              <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
+              <ScrollViewer x:Name="GameItemsViewport" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
+                            PreviewMouseWheel="ItemsViewport_PreviewMouseWheel"
                             Visibility="{Binding ActiveCategory, Converter={StaticResource CategoryToVisibility}, ConverterParameter=game}">
                   <ItemsControl ItemsSource="{Binding CurrentPageGames}">
                       <ItemsControl.ItemsPanel>

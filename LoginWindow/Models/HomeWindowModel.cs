@@ -27,7 +27,7 @@ namespace LoginWindow.Models
 
     public class HomeWindowModel : ReactiveObject
     {
-        private const int PageSize = 24;
+        private const int DefaultPageSize = 24;
 
         private readonly IUserService _userService;
         private readonly IMovieService _movieService;
@@ -50,6 +50,7 @@ namespace LoginWindow.Models
         [Reactive] public string JumpPageText { get; set; } = string.Empty;
         [Reactive] public string SearchText { get; set; } = string.Empty;
         [Reactive] public string ActiveCategory { get; set; } = "movie";
+        [Reactive] public int PageSize { get; private set; } = DefaultPageSize;
         public bool IsAdmin => _currentUserSession.IsAdmin;
         public string CurrentUserText => string.IsNullOrEmpty(_currentUserSession.Username)
             ? string.Empty
@@ -238,6 +239,20 @@ namespace LoginWindow.Models
             }
 
             await LoadCategoryAsync(ActiveCategory);
+        }
+
+        public void UpdatePageSize(int pageSize)
+        {
+            var normalizedPageSize = Math.Max(1, pageSize);
+            if (normalizedPageSize == PageSize)
+            {
+                return;
+            }
+
+            var firstVisibleItemIndex = Math.Max(0, (CurrentPage - 1) * PageSize);
+            PageSize = normalizedPageSize;
+            CurrentPage = firstVisibleItemIndex / PageSize + 1;
+            ApplyActiveCategoryFilter();
         }
 
         private async Task LoadCategoryAsync(string category)
@@ -467,10 +482,10 @@ namespace LoginWindow.Models
 
             public void RefreshCurrentPage()
             {
-                var skip = (_owner.CurrentPage - 1) * PageSize;
+                var skip = (_owner.CurrentPage - 1) * _owner.PageSize;
                 var currentPageItems = _filteredItems
                     .Skip(skip)
-                    .Take(PageSize)
+                    .Take(_owner.PageSize)
                     .ToList();
 
                 _publishPageItems(currentPageItems);
@@ -486,7 +501,7 @@ namespace LoginWindow.Models
 
                 var randomItems = _filteredItems
                     .OrderBy(_ => Random.Shared.Next())
-                    .Take(PageSize)
+                    .Take(_owner.PageSize)
                     .ToList();
 
                 _publishPageItems(randomItems);
