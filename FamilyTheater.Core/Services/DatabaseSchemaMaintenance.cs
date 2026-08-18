@@ -1,5 +1,6 @@
 using FamilyTheater.Core.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace FamilyTheater.Core.Services;
 
@@ -25,8 +26,56 @@ public static class DatabaseSchemaMaintenance
 
     public static void EnsureGameIndexes(AppDbContext db)
     {
+        EnsureColumn(db, "Games", "ScreenshotRootPath", "TEXT");
         db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Games_FolderPath\" ON \"Games\" (\"FolderPath\");");
         db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_Games_Title\" ON \"Games\" (\"Title\");");
         db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_GameTags_GameId_TagName\" ON \"GameTags\" (\"GameId\", \"TagName\");");
+    }
+
+    private static void EnsureColumn(AppDbContext db, string tableName, string columnName, string columnDefinition)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != ConnectionState.Open;
+        if (wasClosed)
+        {
+            connection.Open();
+        }
+
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA table_info(\"{tableName}\");";
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+        }
+        finally
+        {
+            if (wasClosed)
+            {
+                connection.Close();
+            }
+        }
+
+        var sql = string.Concat(
+            "ALTER TABLE ",
+            QuoteIdentifier(tableName),
+            " ADD COLUMN ",
+            QuoteIdentifier(columnName),
+            " ",
+            columnDefinition,
+            ";");
+        db.Database.ExecuteSqlRaw(sql);
+    }
+
+    private static string QuoteIdentifier(string value)
+    {
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
     }
 }

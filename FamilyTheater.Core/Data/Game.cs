@@ -18,6 +18,8 @@ public class Game
 
     public string? PosterPath { get; set; }
 
+    public string? ScreenshotRootPath { get; set; }
+
     public string? Description { get; set; }
 
     public long FolderSizeBytes { get; set; }

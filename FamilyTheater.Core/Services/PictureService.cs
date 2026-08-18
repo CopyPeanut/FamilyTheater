@@ -8,7 +8,7 @@ public class PictureService : IPictureService
 {
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".jpg", ".jpeg", ".png", ".webp", ".bmp"
+        ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"
     };
 
     private readonly ILibraryDbContextFactory _dbContextFactory;

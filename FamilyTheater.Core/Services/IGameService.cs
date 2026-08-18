@@ -25,4 +25,8 @@ public interface IGameService
     Task<List<string>> GetExecutableCandidatesAsync(int gameId);
 
     Task<Game?> SetLaunchPathAsync(int gameId, string launchPath);
+
+    Task<Game?> SetScreenshotRootPathAsync(int gameId, string screenshotRootPath);
+
+    Task<List<string>> GetScreenshotImagesAsync(int gameId);
 }

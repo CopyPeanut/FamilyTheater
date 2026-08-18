@@ -11,6 +11,11 @@ public class GameService : IGameService
         ".jpg", ".jpeg", ".png", ".webp", ".bmp"
     };
 
+    private static readonly HashSet<string> ScreenshotExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"
+    };
+
     private static readonly string[] PosterNamePriority = { "poster", "cover", "folder" };
 
     private static readonly string[] ExcludedExecutableNameParts =
@@ -283,6 +288,55 @@ public class GameService : IGameService
         await db.SaveChangesAsync();
         _logger.Info($"游戏启动项已设置：GameId={gameId}，LaunchPath={launchPath}");
         return game;
+    }
+
+    public async Task<Game?> SetScreenshotRootPathAsync(int gameId, string screenshotRootPath)
+    {
+        var path = screenshotRootPath.Trim();
+        if (!string.IsNullOrWhiteSpace(path) && !Directory.Exists(path))
+        {
+            _logger.Warn($"设置游戏截图目录失败：目录不存在。GameId={gameId}, ScreenshotRootPath={path}");
+            return null;
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var game = await db.Games
+            .Include(g => g.GameTags)
+            .FirstOrDefaultAsync(g => g.Id == gameId);
+        if (game == null)
+        {
+            _logger.Warn($"设置游戏截图目录失败：记录不存在。GameId={gameId}");
+            return null;
+        }
+
+        game.ScreenshotRootPath = path;
+        await db.SaveChangesAsync();
+        _logger.Info($"游戏截图目录已设置：GameId={gameId}, ScreenshotRootPath={path}");
+        return game;
+    }
+
+    public async Task<List<string>> GetScreenshotImagesAsync(int gameId)
+    {
+        var game = await GetGameByIdAsync(gameId);
+        if (game == null ||
+            string.IsNullOrWhiteSpace(game.ScreenshotRootPath) ||
+            !Directory.Exists(game.ScreenshotRootPath))
+        {
+            return new List<string>();
+        }
+
+        try
+        {
+            return Directory.EnumerateFiles(game.ScreenshotRootPath, "*.*", SearchOption.AllDirectories)
+                .Where(path => ScreenshotExtensions.Contains(Path.GetExtension(path)))
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"读取游戏截图目录失败。GameId={gameId}, ScreenshotRootPath={game.ScreenshotRootPath}", ex);
+            return new List<string>();
+        }
     }
 
     private static List<string> FindGameFolders(string rootPath)

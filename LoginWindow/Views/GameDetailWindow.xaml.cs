@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Forms = System.Windows.Forms;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace LoginWindow.Views
@@ -21,6 +22,7 @@ namespace LoginWindow.Views
         private readonly IAppLogger _logger;
         private readonly ObservableCollection<DetailTagViewModel> _allTags = new();
         private readonly ObservableCollection<string> _gameTags = new();
+        private readonly ObservableCollection<string> _screenshots = new();
 
         public GameDetailWindow(Game game, IGameService gameService, IAppLogger logger)
         {
@@ -32,6 +34,7 @@ namespace LoginWindow.Views
             TitleInput.Text = game.Title;
             FolderPathText.Text = game.FolderPath;
             LaunchPathText.Text = game.LaunchPath ?? string.Empty;
+            ScreenshotRootPathText.Text = game.ScreenshotRootPath ?? string.Empty;
             LoadPoster(game.PosterPath);
 
             if (game.GameTags != null)
@@ -44,7 +47,9 @@ namespace LoginWindow.Views
 
             GameTagsList.ItemsSource = _gameTags;
             AllTagsList.ItemsSource = _allTags;
+            ScreenshotList.ItemsSource = _screenshots;
             _ = LoadAllTagsAsync();
+            _ = LoadScreenshotsAsync();
         }
 
         private async Task LoadAllTagsAsync()
@@ -158,6 +163,86 @@ namespace LoginWindow.Views
 
             _game.LaunchPath = updated.LaunchPath;
             LaunchPathText.Text = updated.LaunchPath;
+        }
+
+        private async void SelectScreenshotRoot_Click(object sender, RoutedEventArgs e)
+        {
+            using var dialog = new Forms.FolderBrowserDialog
+            {
+                Description = "选择游戏截图目录",
+                UseDescriptionForTitle = true,
+                SelectedPath = GetInitialScreenshotDirectory()
+            };
+
+            if (dialog.ShowDialog() != Forms.DialogResult.OK)
+            {
+                return;
+            }
+
+            var updated = await _gameService.SetScreenshotRootPathAsync(_game.Id, dialog.SelectedPath);
+            if (updated == null)
+            {
+                CustomMessageBox.Show("截图目录保存失败，请确认目录存在。");
+                return;
+            }
+
+            _game.ScreenshotRootPath = updated.ScreenshotRootPath;
+            ScreenshotRootPathText.Text = updated.ScreenshotRootPath ?? string.Empty;
+            await LoadScreenshotsAsync();
+        }
+
+        private string GetInitialScreenshotDirectory()
+        {
+            if (!string.IsNullOrWhiteSpace(_game.ScreenshotRootPath) &&
+                Directory.Exists(_game.ScreenshotRootPath))
+            {
+                return _game.ScreenshotRootPath;
+            }
+
+            return !string.IsNullOrWhiteSpace(_game.FolderPath) && Directory.Exists(_game.FolderPath)
+                ? _game.FolderPath
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+        }
+
+        private async Task LoadScreenshotsAsync()
+        {
+            var images = await _gameService.GetScreenshotImagesAsync(_game.Id);
+
+            _screenshots.Clear();
+            foreach (var image in images)
+            {
+                _screenshots.Add(image);
+            }
+
+            NoScreenshotsText.Visibility = _screenshots.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void ScreenshotScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            var direction = e.Delta > 0 ? -1 : 1;
+            ScreenshotScrollViewer.ScrollToHorizontalOffset(ScreenshotScrollViewer.HorizontalOffset + direction * 120);
+            e.Handled = true;
+        }
+
+        private void Screenshot_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement { DataContext: string imagePath })
+            {
+                return;
+            }
+
+            if (!File.Exists(imagePath))
+            {
+                CustomMessageBox.Show($"图片不存在：\n{imagePath}");
+                _ = LoadScreenshotsAsync();
+                return;
+            }
+
+            var viewer = new PictureViewerWindow(imagePath, _logger)
+            {
+                Owner = this
+            };
+            viewer.Show();
         }
 
         private string? ChooseExecutable()
