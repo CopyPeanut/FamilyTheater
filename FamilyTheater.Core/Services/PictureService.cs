@@ -141,7 +141,8 @@ public class PictureService : IPictureService
             {
                 RecurseSubdirectories = true,
                 IgnoreInaccessible = true,
-                ReturnSpecialDirectories = false
+                ReturnSpecialDirectories = false,
+                AttributesToSkip = 0
             };
 
             return Directory.EnumerateFiles(rootPath, "*", options).GetEnumerator();

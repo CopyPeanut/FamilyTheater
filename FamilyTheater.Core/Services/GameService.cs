@@ -327,7 +327,7 @@ public class GameService : IGameService
 
         try
         {
-            return Directory.EnumerateFiles(game.ScreenshotRootPath, "*.*", SearchOption.AllDirectories)
+            return Directory.EnumerateFiles(game.ScreenshotRootPath, "*.*", CreateEnumerationOptions(recurse: true))
                 .Where(path => ScreenshotExtensions.Contains(Path.GetExtension(path)))
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -345,7 +345,7 @@ public class GameService : IGameService
 
         try
         {
-            foreach (var folder in Directory.GetDirectories(rootPath))
+            foreach (var folder in Directory.EnumerateDirectories(rootPath, "*", CreateEnumerationOptions(recurse: false)))
             {
                 CollectGameFolders(folder, gameFolders);
             }
@@ -361,13 +361,13 @@ public class GameService : IGameService
     {
         try
         {
-            if (Directory.EnumerateFiles(folderPath).Any())
+            if (Directory.EnumerateFiles(folderPath, "*", CreateEnumerationOptions(recurse: false)).Any())
             {
                 gameFolders.Add(folderPath);
                 return;
             }
 
-            foreach (var childFolder in Directory.GetDirectories(folderPath))
+            foreach (var childFolder in Directory.EnumerateDirectories(folderPath, "*", CreateEnumerationOptions(recurse: false)))
             {
                 CollectGameFolders(childFolder, gameFolders);
             }
@@ -388,7 +388,7 @@ public class GameService : IGameService
 
         try
         {
-            foreach (var file in Directory.EnumerateFiles(posterRootPath, "*.*", SearchOption.AllDirectories))
+            foreach (var file in Directory.EnumerateFiles(posterRootPath, "*.*", CreateEnumerationOptions(recurse: true)))
             {
                 if (!PosterExtensions.Contains(Path.GetExtension(file)))
                 {
@@ -433,7 +433,7 @@ public class GameService : IGameService
         List<string> images;
         try
         {
-            images = Directory.EnumerateFiles(gameFolder)
+            images = Directory.EnumerateFiles(gameFolder, "*", CreateEnumerationOptions(recurse: false))
                 .Where(f => PosterExtensions.Contains(Path.GetExtension(f)))
                 .ToList();
         }
@@ -494,7 +494,7 @@ public class GameService : IGameService
         List<string> executables;
         try
         {
-            executables = Directory.EnumerateFiles(gameFolder, "*.exe", SearchOption.AllDirectories)
+            executables = Directory.EnumerateFiles(gameFolder, "*.exe", CreateEnumerationOptions(recurse: true))
                 .Where(IsLikelyLaunchExecutable)
                 .ToList();
         }
@@ -507,6 +507,17 @@ public class GameService : IGameService
             .OrderBy(path => ScoreExecutable(path, gameFolder, title))
             .ThenBy(path => path.Length)
             .ToList();
+    }
+
+    private static EnumerationOptions CreateEnumerationOptions(bool recurse)
+    {
+        return new EnumerationOptions
+        {
+            RecurseSubdirectories = recurse,
+            IgnoreInaccessible = true,
+            ReturnSpecialDirectories = false,
+            AttributesToSkip = 0
+        };
     }
 
     private static bool IsLikelyLaunchExecutable(string path)

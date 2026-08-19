@@ -454,7 +454,8 @@ public class MovieService : IMovieService
             {
                 RecurseSubdirectories = true,
                 IgnoreInaccessible = true,
-                ReturnSpecialDirectories = false
+                ReturnSpecialDirectories = false,
+                AttributesToSkip = 0
             };
 
             return Directory.EnumerateFiles(rootPath, "*", options).GetEnumerator();
@@ -550,7 +551,7 @@ public class MovieService : IMovieService
         List<string> images;
         try
         {
-            images = Directory.EnumerateFiles(folder)
+            images = Directory.EnumerateFiles(folder, "*", CreateEnumerationOptions(recurse: false))
                 .Where(f => PosterExtensions.Contains(Path.GetExtension(f)))
                 .ToList();
         }
@@ -585,6 +586,17 @@ public class MovieService : IMovieService
         }
 
         return images[0];
+    }
+
+    private static EnumerationOptions CreateEnumerationOptions(bool recurse)
+    {
+        return new EnumerationOptions
+        {
+            RecurseSubdirectories = recurse,
+            IgnoreInaccessible = true,
+            ReturnSpecialDirectories = false,
+            AttributesToSkip = 0
+        };
     }
 
     private async Task<string?> ExtractPosterFromVideoAsync(string videoPath, string folder, string title)

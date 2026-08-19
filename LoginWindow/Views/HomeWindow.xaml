@@ -294,54 +294,58 @@
                     </Grid>
 
                     <!-- 2. 标签筛选区 -->
-                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Tags}" Margin="10,5,10,5">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Content="{Binding Name}"
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding Tags}" Margin="10,5,10,5">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding Name}"
                     Command="{Binding DataContext.ToggleTagCmd, RelativeSource={RelativeSource AncestorType=Window}}"
                     CommandParameter="{Binding Name}"
                     MouseRightButtonUp="TagButton_RightClick"
                     Margin="0,0,8,8" Padding="12,4" FontSize="13"
                     Cursor="Hand" BorderThickness="0">
-                                    <Button.Style>
-                                        <Style TargetType="Button">
-                                            <Setter Property="Background" Value="#333333"/>
-                                            <Setter Property="Foreground" Value="#AAAAAA"/>
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <!-- 核心：重写控件模板，使用 Border 实现圆角 -->
-                                                    <ControlTemplate TargetType="Button">
-                                                        <Border x:Name="border" 
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#333333"/>
+                                                <Setter Property="Foreground" Value="#AAAAAA"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <!-- 核心：重写控件模板，使用 Border 实现圆角 -->
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="border" 
                                             Background="{TemplateBinding Background}" 
                                             CornerRadius="5" 
                                             Padding="{TemplateBinding Padding}">
-                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                            <Style.Triggers>
-                                                <!-- 选中状态：白底黑字 -->
-                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                    <Setter Property="Background" Value="White"/>
-                                                    <Setter Property="Foreground" Value="Black"/>
-                                                </DataTrigger>
-                                                <!-- 可选：增加鼠标悬停时的透明度变化，提升交互体验 -->
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Opacity" Value="0.8"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <!-- 选中状态：白底黑字 -->
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="Background" Value="White"/>
+                                                        <Setter Property="Foreground" Value="Black"/>
+                                                    </DataTrigger>
+                                                    <!-- 可选：增加鼠标悬停时的透明度变化，提升交互体验 -->
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Opacity" Value="0.8"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
 
                 </Grid>
             </Border>
