@@ -14,6 +14,8 @@ public interface IGameService
 
     Task<Game?> RenameGameAsync(int gameId, string newTitle);
 
+    Task<Game?> SetPosterPathAsync(int gameId, string posterPath);
+
     Task AddTagToGameAsync(int gameId, string tagName);
 
     Task RemoveTagFromGameAsync(int gameId, string tagName);

@@ -69,7 +69,7 @@ public class GameService : IGameService
             if (existingGames.TryGetValue(folder, out var game))
             {
                 game.Title = string.IsNullOrWhiteSpace(game.Title) ? title : game.Title;
-                game.PosterPath = posterPath ?? game.PosterPath;
+                game.PosterPath = ShouldKeepExistingPoster(game.PosterPath) ? game.PosterPath : posterPath;
                 game.FolderSizeBytes = 0;
                 game.LastScannedAt = DateTime.UtcNow;
                 SyncTags(game, tags);
@@ -157,6 +157,34 @@ public class GameService : IGameService
         game.Title = title;
         await db.SaveChangesAsync();
         _logger.Info($"游戏记录已重命名：GameId={gameId}，Title={title}");
+        return game;
+    }
+
+    public async Task<Game?> SetPosterPathAsync(int gameId, string posterPath)
+    {
+        var path = posterPath.Trim();
+        if (string.IsNullOrWhiteSpace(path) ||
+            !File.Exists(path) ||
+            !PosterExtensions.Contains(Path.GetExtension(path)))
+        {
+            _logger.Warn($"设置游戏海报失败：海报文件无效。GameId={gameId}, PosterPath={posterPath}");
+            return null;
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var game = await db.Games
+            .Include(g => g.GameTags)
+            .FirstOrDefaultAsync(g => g.Id == gameId);
+        if (game == null)
+        {
+            _logger.Warn($"设置游戏海报失败：记录不存在。GameId={gameId}, PosterPath={path}");
+            return null;
+        }
+
+        game.PosterPath = path;
+        game.LastScannedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        _logger.Info($"游戏海报已设置：GameId={gameId}, PosterPath={path}");
         return game;
     }
 
@@ -518,6 +546,13 @@ public class GameService : IGameService
             ReturnSpecialDirectories = false,
             AttributesToSkip = 0
         };
+    }
+
+    private static bool ShouldKeepExistingPoster(string? posterPath)
+    {
+        return !string.IsNullOrWhiteSpace(posterPath) &&
+               File.Exists(posterPath) &&
+               PosterExtensions.Contains(Path.GetExtension(posterPath));
     }
 
     private static bool IsLikelyLaunchExecutable(string path)

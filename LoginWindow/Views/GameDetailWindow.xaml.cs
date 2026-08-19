@@ -87,7 +87,14 @@ namespace LoginWindow.Views
 
             try
             {
-                PosterImage.Source = new BitmapImage(new Uri(posterPath, UriKind.Absolute));
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = new Uri(posterPath, UriKind.Absolute);
+                image.EndInit();
+                image.Freeze();
+
+                PosterImage.Source = image;
                 PosterImage.Visibility = Visibility.Visible;
                 PosterPlaceholder.Visibility = Visibility.Collapsed;
             }
@@ -97,6 +104,60 @@ namespace LoginWindow.Views
                 PosterImage.Visibility = Visibility.Collapsed;
                 PosterPlaceholder.Visibility = Visibility.Visible;
             }
+        }
+
+        private async void SelectPoster_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedPath = ChoosePosterImage(_game.PosterPath);
+            if (string.IsNullOrWhiteSpace(selectedPath))
+            {
+                return;
+            }
+
+            var updated = await _gameService.SetPosterPathAsync(_game.Id, selectedPath);
+            if (updated == null)
+            {
+                CustomMessageBox.Show("海报保存失败，请确认选择的是有效图片文件。");
+                return;
+            }
+
+            _game.PosterPath = updated.PosterPath;
+            LoadPoster(updated.PosterPath);
+        }
+
+        private string? ChoosePosterImage(string? currentPosterPath)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "选择游戏海报",
+                Filter = "图片文件 (*.jpg;*.jpeg;*.png;*.webp;*.bmp)|*.jpg;*.jpeg;*.png;*.webp;*.bmp",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+
+            var initialDirectory = GetInitialPosterDirectory(currentPosterPath);
+            if (!string.IsNullOrWhiteSpace(initialDirectory))
+            {
+                dialog.InitialDirectory = initialDirectory;
+            }
+
+            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+        }
+
+        private string? GetInitialPosterDirectory(string? currentPosterPath)
+        {
+            if (!string.IsNullOrWhiteSpace(currentPosterPath))
+            {
+                var currentFolder = Path.GetDirectoryName(currentPosterPath);
+                if (!string.IsNullOrWhiteSpace(currentFolder) && Directory.Exists(currentFolder))
+                {
+                    return currentFolder;
+                }
+            }
+
+            return !string.IsNullOrWhiteSpace(_game.FolderPath) && Directory.Exists(_game.FolderPath)
+                ? _game.FolderPath
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
         }
 
         private async void TitleInput_LostFocus(object sender, RoutedEventArgs e)

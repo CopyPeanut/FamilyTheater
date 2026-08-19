@@ -1,6 +1,7 @@
 using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Logger;
 using FamilyTheater.Core.Services;
+using Microsoft.Win32;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace LoginWindow.Views
@@ -42,25 +44,7 @@ namespace LoginWindow.Views
 
             TitleInput.Text = movie.Title;
             FolderPathText.Text = movie.FolderPath;
-
-            if (!string.IsNullOrEmpty(movie.PosterPath))
-            {
-                try
-                {
-                    PosterImage.Source = new System.Windows.Media.Imaging.BitmapImage(
-                        new Uri(movie.PosterPath, UriKind.Absolute));
-                    PosterPlaceholder.Visibility = Visibility.Collapsed;
-                }
-                catch
-                {
-                    _logger.Warn($"加载电影封面失败：MovieId={movie.Id}，PosterPath={movie.PosterPath}");
-                    PosterImage.Visibility = Visibility.Collapsed;
-                }
-            }
-            else
-            {
-                PosterImage.Visibility = Visibility.Collapsed;
-            }
+            LoadPoster(movie.PosterPath);
 
             _movieTags.Clear();
             if (movie.MovieTags != null)
@@ -164,21 +148,7 @@ namespace LoginWindow.Views
 
                 TitleInput.Text = updated.Title;
                 FolderPathText.Text = updated.FolderPath;
-
-                if (!string.IsNullOrEmpty(updated.PosterPath))
-                {
-                    try
-                    {
-                        PosterImage.Source = new System.Windows.Media.Imaging.BitmapImage(
-                            new Uri(updated.PosterPath, UriKind.Absolute));
-                        PosterImage.Visibility = Visibility.Visible;
-                        PosterPlaceholder.Visibility = Visibility.Collapsed;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Warn($"刷新电影封面失败：MovieId={_movie.Id}，PosterPath={updated.PosterPath}", ex);
-                    }
-                }
+                LoadPoster(updated.PosterPath);
 
             }
             catch (Exception ex)
@@ -186,6 +156,93 @@ namespace LoginWindow.Views
                 _logger.Error($"电影重命名异常：MovieId={_movie.Id}，Title={newTitle}", ex);
                 CustomMessageBox.Show($"改名失败：{ex.Message}");
             }
+        }
+
+        private void LoadPoster(string? posterPath)
+        {
+            if (string.IsNullOrWhiteSpace(posterPath) || !File.Exists(posterPath))
+            {
+                PosterImage.Source = null;
+                PosterImage.Visibility = Visibility.Collapsed;
+                PosterPlaceholder.Visibility = Visibility.Visible;
+                return;
+            }
+
+            try
+            {
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = new Uri(posterPath, UriKind.Absolute);
+                image.EndInit();
+                image.Freeze();
+
+                PosterImage.Source = image;
+                PosterImage.Visibility = Visibility.Visible;
+                PosterPlaceholder.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"加载电影海报失败：MovieId={_movie.Id}, PosterPath={posterPath}", ex);
+                PosterImage.Source = null;
+                PosterImage.Visibility = Visibility.Collapsed;
+                PosterPlaceholder.Visibility = Visibility.Visible;
+            }
+        }
+
+        private async void SelectPoster_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedPath = ChoosePosterImage(_movie.PosterPath);
+            if (string.IsNullOrWhiteSpace(selectedPath))
+            {
+                return;
+            }
+
+            var updated = await _movieService.SetPosterPathAsync(_movie.Id, selectedPath);
+            if (updated == null)
+            {
+                CustomMessageBox.Show("海报保存失败，请确认选择的是有效图片文件。");
+                return;
+            }
+
+            _movie.PosterPath = updated.PosterPath;
+            LoadPoster(updated.PosterPath);
+        }
+
+        private string? ChoosePosterImage(string? currentPosterPath)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "选择电影海报",
+                Filter = "图片文件 (*.jpg;*.jpeg;*.png;*.webp;*.bmp)|*.jpg;*.jpeg;*.png;*.webp;*.bmp",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+
+            var initialDirectory = GetInitialPosterDirectory(currentPosterPath);
+            if (!string.IsNullOrWhiteSpace(initialDirectory))
+            {
+                dialog.InitialDirectory = initialDirectory;
+            }
+
+            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+        }
+
+        private string? GetInitialPosterDirectory(string? currentPosterPath)
+        {
+            if (!string.IsNullOrWhiteSpace(currentPosterPath))
+            {
+                var currentFolder = Path.GetDirectoryName(currentPosterPath);
+                if (!string.IsNullOrWhiteSpace(currentFolder) && Directory.Exists(currentFolder))
+                {
+                    return currentFolder;
+                }
+            }
+
+            var movieFolder = Path.GetDirectoryName(_movie.VideoFilePath);
+            return !string.IsNullOrWhiteSpace(movieFolder) && Directory.Exists(movieFolder)
+                ? movieFolder
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
         }
 
         private async void ToggleTag_Click(object sender, RoutedEventArgs e)

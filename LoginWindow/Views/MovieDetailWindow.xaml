@@ -71,6 +71,11 @@
             <!-- 右侧封面 -->
             <Border Grid.Column="1" Width="200" Height="280" CornerRadius="8"
                     Background="#2A2A28" ClipToBounds="True" VerticalAlignment="Top">
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="选择海报..." Click="SelectPoster_Click"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
                 <Grid>
                     <Image x:Name="PosterImage" Stretch="UniformToFill"/>
                     <TextBlock Text="🎬" FontSize="48" Foreground="#666666"

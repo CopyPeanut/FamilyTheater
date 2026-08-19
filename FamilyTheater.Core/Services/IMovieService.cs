@@ -47,6 +47,8 @@ public interface IMovieService
     /// </summary>
     Task<Movie?> RenameMovieAsync(int movieId, string newTitle);
 
+    Task<Movie?> SetPosterPathAsync(int movieId, string posterPath);
+
     /// <summary>
     /// 删除电影记录及其所有标签关联（MovieTag），不删除 Tag 记录本身。
     /// </summary>

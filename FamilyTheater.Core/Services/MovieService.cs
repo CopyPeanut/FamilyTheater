@@ -80,7 +80,7 @@ public class MovieService : IMovieService
 
                 movie.FolderPath = folder;
                 movie.VideoFilePath = videoFile;
-                movie.PosterPath = posterFile;
+                movie.PosterPath = ShouldKeepExistingPoster(movie.PosterPath) ? movie.PosterPath : posterFile;
                 movie.FileSizeBytes = GetFileSizeBytes(videoFile);
                 movie.LastScannedAt = DateTime.UtcNow;
                 SyncTags(movie, tags);
@@ -232,6 +232,34 @@ public class MovieService : IMovieService
         movie.LastScannedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         _logger.Info($"电影记录已重命名：MovieId={movieId}，Title={title}");
+        return movie;
+    }
+
+    public async Task<Movie?> SetPosterPathAsync(int movieId, string posterPath)
+    {
+        var path = posterPath.Trim();
+        if (string.IsNullOrWhiteSpace(path) ||
+            !File.Exists(path) ||
+            !PosterExtensions.Contains(Path.GetExtension(path)))
+        {
+            _logger.Warn($"设置电影海报失败：海报文件无效。MovieId={movieId}, PosterPath={posterPath}");
+            return null;
+        }
+
+        using var db = _dbContextFactory.CreateDbContext();
+        var movie = await db.Movies
+            .Include(m => m.MovieTags)
+            .FirstOrDefaultAsync(m => m.Id == movieId);
+        if (movie == null)
+        {
+            _logger.Warn($"设置电影海报失败：记录不存在。MovieId={movieId}, PosterPath={path}");
+            return null;
+        }
+
+        movie.PosterPath = path;
+        movie.LastScannedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        _logger.Info($"电影海报已设置：MovieId={movieId}, PosterPath={path}");
         return movie;
     }
 
@@ -702,6 +730,13 @@ public class MovieService : IMovieService
     {
         return Path.GetFileNameWithoutExtension(file)
             .EndsWith(AutoPosterSuffix, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldKeepExistingPoster(string? posterPath)
+    {
+        return !string.IsNullOrWhiteSpace(posterPath) &&
+               File.Exists(posterPath) &&
+               PosterExtensions.Contains(Path.GetExtension(posterPath));
     }
 
     private static string GetSafeFileName(string fileName)
