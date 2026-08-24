@@ -1,0 +1,134 @@
+<Window x:Class="LoginWindow.Views.MangaDetailWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="漫画详情" Background="#1E1E1D"
+        Width="800" Height="560"
+        WindowStartupLocation="CenterOwner"
+        Style="{DynamicResource WindowBaseStyle}"
+        ResizeMode="NoResize">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="5*"/>
+            <RowDefinition Height="4*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Top">
+                <TextBox x:Name="TitleInput" Margin="0,0,0,12"
+                         Foreground="#f1b054" FontSize="20" FontWeight="Bold"
+                         Background="#333333" BorderBrush="#555555" BorderThickness="1"
+                         Padding="8,4" VerticalContentAlignment="Center"
+                         KeyDown="TitleInput_KeyDown"
+                         LostFocus="TitleInput_LostFocus"/>
+
+                <TextBlock Text="文件位置" Foreground="#888888" FontSize="12" Margin="0,0,0,4"/>
+                <TextBox x:Name="FolderPathText" IsReadOnly="True" HorizontalAlignment="Left"
+                         Foreground="#CCCCCC" FontSize="13" Background="#2A2A28"
+                         BorderBrush="#444444" BorderThickness="1"
+                         Padding="8,4" Margin="0,0,0,12"
+                         TextWrapping="Wrap" MaxWidth="520"
+                         VerticalScrollBarVisibility="Auto"
+                         IsReadOnlyCaretVisible="True" Cursor="IBeam" Width="520"/>
+
+                <TextBlock Text="Tag" Foreground="#888888" FontSize="12" Margin="0,0,0,6"/>
+
+                <ItemsControl x:Name="MangaTagsList">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding}" Click="RemoveTag_Click"
+                                    Margin="0,0,8,6" Padding="10,4" FontSize="13"
+                                    Cursor="Hand" BorderThickness="0"
+                                    Background="#f1b054" Foreground="#1E1E1D"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <Border Grid.Column="1" Width="180" Height="240" CornerRadius="8"
+                    Background="#2A2A28" ClipToBounds="True" VerticalAlignment="Top">
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="选择封面..." Click="SelectPoster_Click"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <Grid>
+                    <Image x:Name="PosterImage" Stretch="UniformToFill"/>
+                    <StackPanel x:Name="PosterPlaceholder" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="PDF" FontSize="36" FontWeight="Bold"
+                                   Foreground="#f1b054"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="MANGA" FontSize="16" FontWeight="Bold"
+                                   Foreground="#777777"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="1" Margin="20,0,20,20" BorderBrush="#f1b054" BorderThickness="1"
+                CornerRadius="10" Background="Transparent">
+            <Grid Margin="15">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="NewTagInput" Grid.Column="0" Height="32"
+                             Background="#333333" Foreground="White" BorderBrush="#555555"
+                             BorderThickness="1" Padding="8,0" VerticalContentAlignment="Center"
+                             FontSize="13" KeyDown="NewTagInput_KeyDown"/>
+                    <Button Grid.Column="1" Content="添加" Click="AddNewTag_Click"
+                            Height="32" Margin="8,0,0,0" Padding="16,0"
+                            Background="#f1b054" Foreground="#1E1E1D" FontWeight="Bold"
+                            BorderThickness="0" Cursor="Hand" FontSize="13"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="AllTagsList">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Name}" Click="ToggleTag_Click"
+                                        Margin="0,0,8,6" Padding="12,4" FontSize="13"
+                                        Cursor="Hand" BorderThickness="0">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#333333"/>
+                                            <Setter Property="Foreground" Value="#AAAAAA"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="White"/>
+                                                    <Setter Property="Foreground" Value="Black"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -32,6 +32,14 @@ public static class DatabaseSchemaMaintenance
         db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_GameTags_GameId_TagName\" ON \"GameTags\" (\"GameId\", \"TagName\");");
     }
 
+    public static void EnsureMangaIndexes(AppDbContext db)
+    {
+        EnsureColumn(db, "Mangas", "PosterPath", "TEXT");
+        db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Mangas_FilePath\" ON \"Mangas\" (\"FilePath\");");
+        db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_Mangas_Title\" ON \"Mangas\" (\"Title\");");
+        db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_MangaTags_MangaId_TagName\" ON \"MangaTags\" (\"MangaId\", \"TagName\");");
+    }
+
     private static void EnsureColumn(AppDbContext db, string tableName, string columnName, string columnDefinition)
     {
         var connection = db.Database.GetDbConnection();

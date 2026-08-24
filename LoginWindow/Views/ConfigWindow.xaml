@@ -78,6 +78,10 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Text="图片根目录" Foreground="#f1b054" FontSize="14" Margin="0,0,0,8"/>
@@ -130,7 +134,27 @@
                     <Button Grid.Column="1" Content="浏览..." Command="{Binding BrowseCommand}" CommandParameter="gamePoster" Style="{StaticResource BrowseButtonStyle}"/>
                 </Grid>
 
-                <TextBlock Grid.Row="10" Text="{Binding StatusMessage}" Foreground="Gray" FontSize="12" Margin="0,14,0,0" TextWrapping="Wrap"/>
+                <TextBlock Grid.Row="10" Text="漫画根目录" Foreground="#f1b054" FontSize="14" Margin="0,14,0,8"/>
+                <Grid Grid.Row="11">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" Text="{Binding MangaRootPath, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource PathTextBoxStyle}"/>
+                    <Button Grid.Column="1" Content="浏览..." Command="{Binding BrowseCommand}" CommandParameter="manga" Style="{StaticResource BrowseButtonStyle}"/>
+                </Grid>
+
+                <TextBlock Grid.Row="12" Text="漫画封面根目录" Foreground="#f1b054" FontSize="14" Margin="0,14,0,8"/>
+                <Grid Grid.Row="13">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" Text="{Binding MangaPosterRootPath, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource PathTextBoxStyle}"/>
+                    <Button Grid.Column="1" Content="浏览..." Command="{Binding BrowseCommand}" CommandParameter="mangaPoster" Style="{StaticResource BrowseButtonStyle}"/>
+                </Grid>
+
+                <TextBlock Grid.Row="14" Text="{Binding StatusMessage}" Foreground="Gray" FontSize="12" Margin="0,14,0,0" TextWrapping="Wrap"/>
             </Grid>
         </ScrollViewer>
 

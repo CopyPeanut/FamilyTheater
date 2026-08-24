@@ -114,7 +114,9 @@ namespace LoginWindow.Views
                 ? PictureItemsViewport
                 : _viewModel.ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase)
                     ? GameItemsViewport
-                    : MovieItemsViewport;
+                    : _viewModel.ActiveCategory.Equals("manga", StringComparison.OrdinalIgnoreCase)
+                        ? MangaItemsViewport
+                        : MovieItemsViewport;
         }
 
         private (double Width, double Height) GetActiveItemFootprint()
@@ -123,7 +125,9 @@ namespace LoginWindow.Views
                 ? (216, 216)
                 : _viewModel.ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase)
                     ? (200, 300)
-                    : (196, 296);
+                    : _viewModel.ActiveCategory.Equals("manga", StringComparison.OrdinalIgnoreCase)
+                        ? (196, 296)
+                        : (196, 296);
         }
 
         private void ItemsViewport_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -280,6 +284,57 @@ namespace LoginWindow.Views
             await _viewModel.DeleteActiveTagAsync(tagViewModel.Name);
         }
 
+        private async void MangaCard_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement { DataContext: Manga manga })
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(manga.FilePath) || !File.Exists(manga.FilePath))
+            {
+                _logger.Warn($"Open manga failed: PDF file does not exist. MangaId={manga.Id}, FilePath={manga.FilePath}");
+                if (CustomMessageBox.ShowDialog($"当前文件不存在：\n{manga.FilePath}\n\n是否从数据库删除该记录？"))
+                {
+                    _logger.Info($"User confirmed deleting missing manga record. MangaId={manga.Id}, FilePath={manga.FilePath}");
+                    await _viewModel.MangaService.DeleteMangaAsync(manga.Id);
+                    await _viewModel.LoadMangasAsync();
+                }
+
+                return;
+            }
+
+            OpenPdf(manga.FilePath);
+        }
+
+        private async void MangaCard_RightClick(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement { DataContext: Manga manga })
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(manga.FilePath) || !File.Exists(manga.FilePath))
+            {
+                _logger.Warn($"Open manga detail failed: PDF file does not exist. MangaId={manga.Id}, FilePath={manga.FilePath}");
+                if (CustomMessageBox.ShowDialog($"当前文件不存在：\n{manga.FilePath}\n\n是否从数据库删除该记录？"))
+                {
+                    _logger.Info($"User confirmed deleting missing manga record. MangaId={manga.Id}, FilePath={manga.FilePath}");
+                    await _viewModel.MangaService.DeleteMangaAsync(manga.Id);
+                    await _viewModel.LoadMangasAsync();
+                }
+
+                return;
+            }
+
+            var detail = new MangaDetailWindow(manga, _viewModel.MangaService, _logger)
+            {
+                Owner = this
+            };
+            detail.ShowDialog();
+            await _viewModel.LoadMangasAsync();
+        }
+
         private async void GameCard_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is not FrameworkElement { DataContext: Game game })
@@ -370,6 +425,24 @@ namespace LoginWindow.Views
             {
                 _logger.Error($"启动游戏异常：LaunchPath={launchPath}", ex);
                 CustomMessageBox.Show($"启动失败：\n{ex.Message}");
+            }
+        }
+
+        private void OpenPdf(string pdfPath)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = pdfPath,
+                    UseShellExecute = true
+                });
+                _logger.Info($"Manga PDF opened. FilePath={pdfPath}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Open manga PDF failed. FilePath={pdfPath}", ex);
+                CustomMessageBox.Show($"打开失败：\n{ex.Message}");
             }
         }
     }

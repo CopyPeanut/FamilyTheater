@@ -435,6 +435,60 @@
                   </ItemsControl>
               </ScrollViewer>
 
+              <!-- 漫画展示区域(Grid.Row=2) -->
+              <ScrollViewer x:Name="MangaItemsViewport" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
+                            PreviewMouseWheel="ItemsViewport_PreviewMouseWheel"
+                            Visibility="{Binding ActiveCategory, Converter={StaticResource CategoryToVisibility}, ConverterParameter=manga}">
+                  <ItemsControl ItemsSource="{Binding CurrentPageMangas}">
+                      <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                              <WrapPanel Orientation="Horizontal" />
+                          </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                              <Border Width="180" Height="280" Margin="8" Background="#2A2A28"
+                                      CornerRadius="8" ClipToBounds="True" Cursor="Hand"
+                                      MouseLeftButtonDown="MangaCard_Click"
+                                      MouseRightButtonDown="MangaCard_RightClick">
+                                  <StackPanel>
+                                      <Grid Width="180" Height="240" Background="#3A3A38">
+                                          <Image Source="{Binding PosterPath, Converter={StaticResource StringToImage}}"
+                                                 Stretch="UniformToFill"/>
+                                          <Grid>
+                                              <Grid.Style>
+                                                  <Style TargetType="Grid">
+                                                      <Setter Property="Visibility" Value="Collapsed"/>
+                                                      <Style.Triggers>
+                                                          <DataTrigger Binding="{Binding PosterPath}" Value="{x:Null}">
+                                                              <Setter Property="Visibility" Value="Visible"/>
+                                                          </DataTrigger>
+                                                      </Style.Triggers>
+                                                  </Style>
+                                              </Grid.Style>
+                                              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                  <TextBlock Text="PDF" FontSize="36" FontWeight="Bold"
+                                                             Foreground="#f1b054"
+                                                             HorizontalAlignment="Center"/>
+                                                  <TextBlock Text="MANGA" FontSize="16" FontWeight="Bold"
+                                                             Foreground="#777777"
+                                                             HorizontalAlignment="Center"
+                                                             Margin="0,8,0,0"/>
+                                              </StackPanel>
+                                          </Grid>
+                                      </Grid>
+
+                                      <TextBlock Text="{Binding Title}" Foreground="#E0E0E0" FontSize="13"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                 Margin="5,8,5,5" TextTrimming="CharacterEllipsis"
+                                                 TextWrapping="NoWrap" MaxWidth="170"/>
+                                  </StackPanel>
+                              </Border>
+                          </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+              </ScrollViewer>
+
               <!-- 游戏展示区域(Grid.Row=2) -->
               <ScrollViewer x:Name="GameItemsViewport" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,0"
                             PreviewMouseWheel="ItemsViewport_PreviewMouseWheel"

@@ -17,6 +17,8 @@ namespace FamilyTheater.Core.Data
         public DbSet<PictureTag> PictureTags { get; set; } = null!;
         public DbSet<Game> Games { get; set; } = null!;
         public DbSet<GameTag> GameTags { get; set; } = null!;
+        public DbSet<Manga> Mangas { get; set; } = null!;
+        public DbSet<MangaTag> MangaTags { get; set; } = null!;
 
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options)
@@ -82,6 +84,22 @@ namespace FamilyTheater.Core.Data
                 entity.HasOne(gt => gt.Game)
                       .WithMany(g => g.GameTags)
                       .HasForeignKey(gt => gt.GameId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Manga>(entity =>
+            {
+                entity.HasIndex(m => m.FilePath).IsUnique();
+                entity.HasIndex(m => m.Title);
+            });
+
+            modelBuilder.Entity<MangaTag>(entity =>
+            {
+                entity.HasIndex(mt => new { mt.MangaId, mt.TagName }).IsUnique();
+
+                entity.HasOne(mt => mt.Manga)
+                      .WithMany(m => m.MangaTags)
+                      .HasForeignKey(mt => mt.MangaId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
         }

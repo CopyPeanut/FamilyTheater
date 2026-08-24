@@ -15,6 +15,7 @@ namespace LoginWindow.Models
         private readonly IMovieService _movieService;
         private readonly IPictureService _pictureService;
         private readonly IGameService _gameService;
+        private readonly IMangaService _mangaService;
         private readonly IAppLogger _logger;
 
         [Reactive] public string MediaRootPath { get; set; } = string.Empty;
@@ -22,6 +23,8 @@ namespace LoginWindow.Models
         [Reactive] public string PictureRootPath { get; set; } = string.Empty;
         [Reactive] public string GameRootPath { get; set; } = string.Empty;
         [Reactive] public string GamePosterRootPath { get; set; } = string.Empty;
+        [Reactive] public string MangaRootPath { get; set; } = string.Empty;
+        [Reactive] public string MangaPosterRootPath { get; set; } = string.Empty;
         [Reactive] public string StatusMessage { get; set; } = string.Empty;
         [Reactive] public bool IsScanning { get; set; }
 
@@ -33,12 +36,14 @@ namespace LoginWindow.Models
             IMovieService movieService,
             IPictureService pictureService,
             IGameService gameService,
+            IMangaService mangaService,
             IAppLogger logger)
         {
             _settingService = settingService;
             _movieService = movieService;
             _pictureService = pictureService;
             _gameService = gameService;
+            _mangaService = mangaService;
             _logger = logger;
 
             var canSave = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning);
@@ -57,6 +62,8 @@ namespace LoginWindow.Models
                 PictureRootPath = await _settingService.GetPictureRootPathAsync() ?? string.Empty;
                 GameRootPath = await _settingService.GetGameRootPathAsync() ?? string.Empty;
                 GamePosterRootPath = await _settingService.GetGamePosterRootPathAsync() ?? string.Empty;
+                MangaRootPath = await _settingService.GetMangaRootPathAsync() ?? string.Empty;
+                MangaPosterRootPath = await _settingService.GetMangaPosterRootPathAsync() ?? string.Empty;
             }
             catch (Exception ex)
             {
@@ -76,6 +83,8 @@ namespace LoginWindow.Models
                     "poster" => "选择电影海报根目录",
                     "game" => "选择游戏根目录",
                     "gamePoster" => "选择游戏海报根目录",
+                    "manga" => "选择漫画根目录",
+                    "mangaPoster" => "选择漫画封面根目录",
                     _ => "选择媒体根目录"
                 }
             };
@@ -95,6 +104,12 @@ namespace LoginWindow.Models
                         break;
                     case "gamePoster":
                         GamePosterRootPath = dialog.SelectedPath;
+                        break;
+                    case "manga":
+                        MangaRootPath = dialog.SelectedPath;
+                        break;
+                    case "mangaPoster":
+                        MangaPosterRootPath = dialog.SelectedPath;
                         break;
                     default:
                         MediaRootPath = dialog.SelectedPath;
@@ -125,6 +140,13 @@ namespace LoginWindow.Models
                     ? "图片：未发现可入库的图片文件"
                     : $"图片：新增 {pictureResult.Added} 张，更新 {pictureResult.Updated} 张，跳过 {pictureResult.Skipped} 个文件夹";
 
+                await _settingService.SetMangaRootPathAsync(MangaRootPath ?? string.Empty);
+                await _settingService.SetMangaPosterRootPathAsync(MangaPosterRootPath ?? string.Empty);
+                var mangaResult = await _mangaService.ScanLibraryAsync();
+                var mangaMessage = mangaResult.Added == 0 && mangaResult.Updated == 0 && mangaResult.Skipped == 0
+                    ? "漫画：未发现可入库的 PDF 文件"
+                    : $"漫画：新增 {mangaResult.Added} 本，更新 {mangaResult.Updated} 本，跳过 {mangaResult.Skipped} 个文件夹";
+
                 await _settingService.SetGameRootPathAsync(GameRootPath ?? string.Empty);
                 await _settingService.SetGamePosterRootPathAsync(GamePosterRootPath ?? string.Empty);
                 var gameResult = await _gameService.ScanLibraryAsync();
@@ -132,7 +154,7 @@ namespace LoginWindow.Models
                     ? "游戏：未发现可入库的游戏文件夹"
                     : $"游戏：新增 {gameResult.Added} 个，更新 {gameResult.Updated} 个，跳过 {gameResult.Skipped} 个文件夹";
 
-                StatusMessage = $"{mediaMessage}；{pictureMessage}；{gameMessage}";
+                StatusMessage = $"{mediaMessage}；{pictureMessage}；{mangaMessage}；{gameMessage}";
             }
             catch (Exception ex)
             {

@@ -11,6 +11,8 @@ public class SettingService : ISettingService
     private const string PictureRootPathKey = "PictureRootPath";
     private const string GameRootPathKey = "GameRootPath";
     private const string GamePosterRootPathKey = "GamePosterRootPath";
+    private const string MangaRootPathKey = "MangaRootPath";
+    private const string MangaPosterRootPathKey = "MangaPosterRootPath";
 
     private readonly ILibraryDbContextFactory _dbContextFactory;
     private readonly IAppLogger _logger;
@@ -65,6 +67,14 @@ public class SettingService : ISettingService
     public Task<string?> GetGamePosterRootPathAsync() => GetAsync(GamePosterRootPathKey);
 
     public Task SetGamePosterRootPathAsync(string path) => SetAsync(GamePosterRootPathKey, path);
+
+    public Task<string?> GetMangaRootPathAsync() => GetAsync(MangaRootPathKey);
+
+    public Task SetMangaRootPathAsync(string path) => SetAsync(MangaRootPathKey, path);
+
+    public Task<string?> GetMangaPosterRootPathAsync() => GetAsync(MangaPosterRootPathKey);
+
+    public Task SetMangaPosterRootPathAsync(string path) => SetAsync(MangaPosterRootPathKey, path);
 
     public Task<string?> GetPictureRootPathAsync() => GetAsync(PictureRootPathKey);
 

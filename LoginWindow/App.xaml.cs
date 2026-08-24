@@ -111,6 +111,7 @@ public partial class App : System.Windows.Application
                 EnsureUserRoleColumn(db);
                 DatabaseSchemaMaintenance.EnsureMovieFileIndexes(db);
                 DatabaseSchemaMaintenance.EnsureGameIndexes(db);
+                DatabaseSchemaMaintenance.EnsureMangaIndexes(db);
 
                 if (db.Users.Any() && !db.Users.Any(user => user.Role == UserRoles.Admin))
                 {

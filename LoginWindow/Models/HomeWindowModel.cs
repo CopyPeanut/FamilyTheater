@@ -33,6 +33,7 @@ namespace LoginWindow.Models
         private readonly IMovieService _movieService;
         private readonly IPictureService _pictureService;
         private readonly IGameService _gameService;
+        private readonly IMangaService _mangaService;
         private readonly ICurrentUserSession _currentUserSession;
         private readonly Func<ConfigWindow> _configWindowFactory;
         private readonly Func<UserPermissionsWindow> _userPermissionsWindowFactory;
@@ -44,6 +45,8 @@ namespace LoginWindow.Models
         public IPictureService PictureService => _pictureService;
 
         public IGameService GameService => _gameService;
+
+        public IMangaService MangaService => _mangaService;
 
         [Reactive] public int CurrentPage { get; set; } = 1;
         [Reactive] public int TotalPages { get; set; } = 1;
@@ -59,6 +62,7 @@ namespace LoginWindow.Models
         public ObservableCollection<Movie> CurrentPageMovies { get; } = new();
         public ObservableCollection<Picture> CurrentPagePictures { get; } = new();
         public ObservableCollection<Game> CurrentPageGames { get; } = new();
+        public ObservableCollection<Manga> CurrentPageMangas { get; } = new();
         public ObservableCollection<TagViewModel> Tags { get; } = new();
         public ObservableCollection<int?> PageNumbers { get; } = new();
 
@@ -84,6 +88,7 @@ namespace LoginWindow.Models
             IMovieService movieService,
             IPictureService pictureService,
             IGameService gameService,
+            IMangaService mangaService,
             ICurrentUserSession currentUserSession,
             Func<ConfigWindow> configWindowFactory,
             Func<UserPermissionsWindow> userPermissionsWindowFactory,
@@ -93,6 +98,7 @@ namespace LoginWindow.Models
             _movieService = movieService;
             _pictureService = pictureService;
             _gameService = gameService;
+            _mangaService = mangaService;
             _currentUserSession = currentUserSession;
             _configWindowFactory = configWindowFactory;
             _userPermissionsWindowFactory = userPermissionsWindowFactory;
@@ -122,7 +128,15 @@ namespace LoginWindow.Models
                     loadTagsAsync: _gameService.GetAllTagsAsync,
                     getSearchText: game => game.Title,
                     getItemTags: game => game.GameTags?.Select(tag => tag.TagName) ?? Enumerable.Empty<string>(),
-                    publishPageItems: ReplaceCurrentGames)
+                    publishPageItems: ReplaceCurrentGames),
+
+                ["manga"] = new CategoryHandler<Manga>(
+                    owner: this,
+                    loadItemsAsync: async () => await _mangaService.GetAllMangasAsync() ?? new List<Manga>(),
+                    loadTagsAsync: _mangaService.GetAllTagsAsync,
+                    getSearchText: manga => manga.Title,
+                    getItemTags: manga => manga.MangaTags?.Select(tag => tag.TagName) ?? Enumerable.Empty<string>(),
+                    publishPageItems: ReplaceCurrentMangas)
             };
 
             var canMoveBack = this.WhenAnyValue(x => x.CurrentPage, page => page > 1);
@@ -217,6 +231,11 @@ namespace LoginWindow.Models
             return LoadCategoryAsync("game");
         }
 
+        public Task LoadMangasAsync()
+        {
+            return LoadCategoryAsync("manga");
+        }
+
         public async Task DeleteActiveTagAsync(string tagName)
         {
             var name = tagName.Trim();
@@ -236,6 +255,10 @@ namespace LoginWindow.Models
             else if (ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase))
             {
                 await _gameService.DeleteTagAsync(name);
+            }
+            else if (ActiveCategory.Equals("manga", StringComparison.OrdinalIgnoreCase))
+            {
+                await _mangaService.DeleteTagAsync(name);
             }
 
             await LoadCategoryAsync(ActiveCategory);
@@ -332,6 +355,7 @@ namespace LoginWindow.Models
         {
             CurrentPagePictures.Clear();
             CurrentPageGames.Clear();
+            CurrentPageMangas.Clear();
             CurrentPageMovies.Clear();
 
             foreach (var movie in movies)
@@ -344,6 +368,7 @@ namespace LoginWindow.Models
         {
             CurrentPageMovies.Clear();
             CurrentPageGames.Clear();
+            CurrentPageMangas.Clear();
             CurrentPagePictures.Clear();
 
             foreach (var picture in pictures)
@@ -356,11 +381,25 @@ namespace LoginWindow.Models
         {
             CurrentPageMovies.Clear();
             CurrentPagePictures.Clear();
+            CurrentPageMangas.Clear();
             CurrentPageGames.Clear();
 
             foreach (var game in games)
             {
                 CurrentPageGames.Add(game);
+            }
+        }
+
+        private void ReplaceCurrentMangas(IReadOnlyList<Manga> mangas)
+        {
+            CurrentPageMovies.Clear();
+            CurrentPagePictures.Clear();
+            CurrentPageGames.Clear();
+            CurrentPageMangas.Clear();
+
+            foreach (var manga in mangas)
+            {
+                CurrentPageMangas.Add(manga);
             }
         }
 
@@ -399,6 +438,7 @@ namespace LoginWindow.Models
             CurrentPageMovies.Clear();
             CurrentPagePictures.Clear();
             CurrentPageGames.Clear();
+            CurrentPageMangas.Clear();
         }
 
         private void RefreshPageNumbers()
