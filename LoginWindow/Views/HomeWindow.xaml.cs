@@ -19,6 +19,7 @@ namespace LoginWindow.Views
         private readonly IAppLogger _logger;
         private readonly Func<Login> _loginWindowFactory;
         private readonly DispatcherTimer _pageWheelTimer;
+        private readonly HashSet<Window> _presentationWindows = new();
         private int _pendingPageWheelDirection;
 
         public static readonly DependencyProperty ViewModelProperty =
@@ -180,11 +181,8 @@ namespace LoginWindow.Views
                 return;
             }
 
-            var player = new PlayerWindow(movie.VideoFilePath, _logger)
-            {
-                Owner = this
-            };
-            player.Show();
+            var player = new PlayerWindow(movie.VideoFilePath, _logger);
+            ShowPresentationWindow(player);
         }
 
         private async void MovieCard_RightClick(object sender, MouseButtonEventArgs e)
@@ -233,11 +231,8 @@ namespace LoginWindow.Views
                 return;
             }
 
-            var viewer = new PictureViewerWindow(picture.FilePath, _logger)
-            {
-                Owner = this
-            };
-            viewer.Show();
+            var viewer = new PictureViewerWindow(picture.FilePath, _logger);
+            ShowPresentationWindow(viewer);
         }
 
         private async void PictureCard_RightClick(object sender, MouseButtonEventArgs e)
@@ -428,16 +423,41 @@ namespace LoginWindow.Views
             }
         }
 
+        private void ShowPresentationWindow(Window window)
+        {
+            _presentationWindows.Add(window);
+            window.Closed += PresentationWindow_Closed;
+            window.Show();
+        }
+
+        private void PresentationWindow_Closed(object? sender, EventArgs e)
+        {
+            if (sender is Window window)
+            {
+                window.Closed -= PresentationWindow_Closed;
+                _presentationWindows.Remove(window);
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            foreach (var window in new List<Window>(_presentationWindows))
+            {
+                window.Closed -= PresentationWindow_Closed;
+                window.Close();
+            }
+
+            _presentationWindows.Clear();
+            base.OnClosed(e);
+        }
+
         private void OpenPdf(string pdfPath)
         {
             try
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = pdfPath,
-                    UseShellExecute = true
-                });
-                _logger.Info($"Manga PDF opened. FilePath={pdfPath}");
+                var viewer = new PdfViewerWindow(pdfPath, _logger);
+                ShowPresentationWindow(viewer);
+                _logger.Info($"Manga PDF viewer opened. FilePath={pdfPath}");
             }
             catch (Exception ex)
             {

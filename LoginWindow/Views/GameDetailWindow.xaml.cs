@@ -299,10 +299,7 @@ namespace LoginWindow.Views
                 return;
             }
 
-            var viewer = new PictureViewerWindow(imagePath, _logger)
-            {
-                Owner = this
-            };
+            var viewer = new PictureViewerWindow(imagePath, _logger);
             viewer.Show();
         }
 
