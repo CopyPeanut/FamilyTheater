@@ -45,8 +45,9 @@ public class FileLogger : IAppLogger
         {
             EnsureLogDirectory();
 
-            var logFilePath = Path.Combine(_logDirectory, $"{DateTime.Now:yyyy-MM-dd}.log");
-            var logText = BuildLogText(level, message, exception);
+            var timestamp = DateTime.Now;
+            var logFilePath = Path.Combine(_logDirectory, $"{timestamp:yyyy-MM-dd}.log");
+            var logText = BuildLogText(timestamp, level, message, exception);
 
             lock (_syncRoot)
             {
@@ -59,22 +60,37 @@ public class FileLogger : IAppLogger
         }
     }
 
-    private static string BuildLogText(LogLevel level, string message, Exception? exception)
+    private static string BuildLogText(DateTime timestamp, LogLevel level, string message, Exception? exception)
     {
         var builder = new StringBuilder();
+        var prefix = $"[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{level}] ";
 
-        builder.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-        builder.Append(" [");
-        builder.Append(level);
-        builder.Append("] ");
-        builder.AppendLine(message);
+        AppendLines(builder, prefix, message);
 
         if (exception != null)
         {
-            builder.AppendLine(exception.ToString());
+            AppendLines(builder, prefix, exception.ToString());
         }
 
         return builder.ToString();
+    }
+
+    private static void AppendLines(StringBuilder builder, string prefix, string text)
+    {
+        using var reader = new StringReader(text);
+        var hasLine = false;
+
+        while (reader.ReadLine() is { } line)
+        {
+            builder.Append(prefix);
+            builder.AppendLine(line);
+            hasLine = true;
+        }
+
+        if (!hasLine)
+        {
+            builder.AppendLine(prefix);
+        }
     }
 
     private void EnsureLogDirectory()
