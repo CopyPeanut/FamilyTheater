@@ -172,7 +172,7 @@ namespace LoginWindow.Models
             {
                 var window = _configWindowFactory();
                 window.ShowDialog();
-                await LoadCategoryAsync(ActiveCategory);
+                await RefreshActiveCategoryAsync();
             });
             OpenUserPermissionsCmd = ReactiveCommand.Create(() =>
             {
@@ -236,6 +236,18 @@ namespace LoginWindow.Models
             return LoadCategoryAsync("manga");
         }
 
+        public async Task RefreshActiveCategoryAsync()
+        {
+            if (TryGetActiveCategoryHandler(out var handler))
+            {
+                var selectedTagNames = GetSelectedTagNames();
+                await handler.LoadAsync(selectedTagNames);
+                return;
+            }
+
+            ClearCategoryPresentation();
+        }
+
         public async Task DeleteActiveTagAsync(string tagName)
         {
             var name = tagName.Trim();
@@ -261,7 +273,7 @@ namespace LoginWindow.Models
                 await _mangaService.DeleteTagAsync(name);
             }
 
-            await LoadCategoryAsync(ActiveCategory);
+            await RefreshActiveCategoryAsync();
         }
 
         public void UpdatePageSize(int pageSize)
@@ -285,7 +297,7 @@ namespace LoginWindow.Models
 
             if (TryGetActiveCategoryHandler(out var handler))
             {
-                await handler.LoadAsync();
+                await handler.LoadAsync(selectedTagNames: null);
                 return;
             }
 
@@ -342,12 +354,15 @@ namespace LoginWindow.Models
             }
         }
 
-        private void ReplaceTags(IEnumerable<string> tagNames)
+        private void ReplaceTags(IEnumerable<string> tagNames, IReadOnlySet<string>? selectedTagNames = null)
         {
             Tags.Clear();
             foreach (var name in tagNames)
             {
-                Tags.Add(new TagViewModel(name));
+                Tags.Add(new TagViewModel(name)
+                {
+                    IsSelected = selectedTagNames?.Contains(name) == true
+                });
             }
         }
 
@@ -454,7 +469,7 @@ namespace LoginWindow.Models
 
         private interface ICategoryHandler
         {
-            Task LoadAsync();
+            Task LoadAsync(IReadOnlySet<string>? selectedTagNames);
 
             void ApplyFilter();
 
@@ -491,11 +506,11 @@ namespace LoginWindow.Models
                 _publishPageItems = publishPageItems;
             }
 
-            public async Task LoadAsync()
+            public async Task LoadAsync(IReadOnlySet<string>? selectedTagNames)
             {
                 _allItems = await _loadItemsAsync();
                 var tags = await _loadTagsAsync();
-                _owner.ReplaceTags(tags);
+                _owner.ReplaceTags(tags, selectedTagNames);
                 ApplyFilter();
             }
 

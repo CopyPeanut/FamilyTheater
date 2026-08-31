@@ -176,7 +176,7 @@ namespace LoginWindow.Views
                 {
                     _logger.Info($"用户确认删除失效电影记录：MovieId={movie.Id}，VideoFilePath={movie.VideoFilePath}");
                     await _viewModel.MovieService.DeleteMovieAsync(movie.Id);
-                    await _viewModel.LoadMoviesAsync();
+                    await _viewModel.RefreshActiveCategoryAsync();
                 }
                 return;
             }
@@ -199,7 +199,7 @@ namespace LoginWindow.Views
                 {
                     _logger.Info($"用户确认删除失效电影记录：MovieId={movie.Id}，VideoFilePath={movie.VideoFilePath}");
                     await _viewModel.MovieService.DeleteMovieAsync(movie.Id);
-                    await _viewModel.LoadMoviesAsync();
+                    await _viewModel.RefreshActiveCategoryAsync();
                 }
                 return;
             }
@@ -209,7 +209,7 @@ namespace LoginWindow.Views
                 Owner = this
             };
             detail.ShowDialog();
-            _ = _viewModel.LoadMoviesAsync();
+            await _viewModel.RefreshActiveCategoryAsync();
         }
 
         private async void PictureCard_Click(object sender, MouseButtonEventArgs e)
@@ -226,7 +226,7 @@ namespace LoginWindow.Views
                 {
                     _logger.Info($"用户确认删除失效图片记录：PictureId={picture.Id}，FilePath={picture.FilePath}");
                     await _viewModel.PictureService.DeletePictureAsync(picture.Id);
-                    await _viewModel.LoadPicturesAsync();
+                    await _viewModel.RefreshActiveCategoryAsync();
                 }
                 return;
             }
@@ -249,7 +249,7 @@ namespace LoginWindow.Views
                 {
                     _logger.Info($"用户确认删除失效图片记录：PictureId={picture.Id}，FilePath={picture.FilePath}");
                     await _viewModel.PictureService.DeletePictureAsync(picture.Id);
-                    await _viewModel.LoadPicturesAsync();
+                    await _viewModel.RefreshActiveCategoryAsync();
                 }
                 return;
             }
@@ -259,7 +259,7 @@ namespace LoginWindow.Views
                 Owner = this
             };
             detail.ShowDialog();
-            _ = _viewModel.LoadPicturesAsync();
+            await _viewModel.RefreshActiveCategoryAsync();
         }
 
         private async void TagButton_RightClick(object sender, MouseButtonEventArgs e)
@@ -293,7 +293,7 @@ namespace LoginWindow.Views
                 {
                     _logger.Info($"User confirmed deleting missing manga record. MangaId={manga.Id}, FilePath={manga.FilePath}");
                     await _viewModel.MangaService.DeleteMangaAsync(manga.Id);
-                    await _viewModel.LoadMangasAsync();
+                    await _viewModel.RefreshActiveCategoryAsync();
                 }
 
                 return;
@@ -316,7 +316,7 @@ namespace LoginWindow.Views
                 {
                     _logger.Info($"User confirmed deleting missing manga record. MangaId={manga.Id}, FilePath={manga.FilePath}");
                     await _viewModel.MangaService.DeleteMangaAsync(manga.Id);
-                    await _viewModel.LoadMangasAsync();
+                    await _viewModel.RefreshActiveCategoryAsync();
                 }
 
                 return;
@@ -327,7 +327,7 @@ namespace LoginWindow.Views
                 Owner = this
             };
             detail.ShowDialog();
-            await _viewModel.LoadMangasAsync();
+            await _viewModel.RefreshActiveCategoryAsync();
         }
 
         private async void GameCard_Click(object sender, MouseButtonEventArgs e)
@@ -390,7 +390,7 @@ namespace LoginWindow.Views
                 Owner = this
             };
             detail.ShowDialog();
-            await _viewModel.LoadGamesAsync();
+            await _viewModel.RefreshActiveCategoryAsync();
         }
 
         private string? ChooseGameExecutable(Game game, IReadOnlyList<string> candidates)
