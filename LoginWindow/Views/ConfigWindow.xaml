@@ -160,8 +160,14 @@
 
         <Border Grid.Row="2" Background="#f1b054" CornerRadius="10,10,0,0" Padding="15,8">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="保存" Command="{Binding SaveCommand}"
-                        Width="100" Height="32"
+                <Button Content="完整重扫电影" Command="{Binding FullMovieScanCommand}"
+                        ToolTip="重新处理所有已有视频，并重试缺失海报"
+                        Width="140" Height="32" Margin="0,0,10,0"
+                        Background="#1E1E1D" Foreground="#f1b054" FontWeight="Bold"
+                        BorderThickness="0" Cursor="Hand" FontSize="14"/>
+                <Button Content="保存（增量扫描）" Command="{Binding SaveCommand}"
+                        ToolTip="已有视频直接跳过，只处理新导入的视频"
+                        Width="150" Height="32"
                         Background="#1E1E1D" Foreground="#f1b054" FontWeight="Bold"
                         BorderThickness="0" Cursor="Hand" FontSize="14"/>
             </StackPanel>

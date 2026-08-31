@@ -7,12 +7,12 @@ namespace FamilyTheater.Core.Services;
 public interface IMovieService
 {
     /// <summary>
-    /// 扫描媒体库：遍历叶子文件夹 → 扫视频/海报 → 写库。
-    /// 叶子文件夹 = 不含子目录的文件夹，每个叶子文件夹 = 一条 Movie 记录。
-    /// 已存在的记录（按 FolderPath 匹配）更新信息，不重复新增。
+    /// 扫描媒体库。默认执行增量扫描，已按视频路径入库的记录会直接跳过；
+    /// 完整扫描会重新检查已有视频及其海报。
     /// </summary>
+    /// <param name="fullRescan">是否重新处理数据库中已有的视频。</param>
     /// <returns>本次扫描新增 / 更新 / 跳过的电影数量。</returns>
-    Task<ScanResult> ScanLibraryAsync();
+    Task<ScanResult> ScanLibraryAsync(bool fullRescan = false);
 
     /// <summary>
     /// 获取全部电影（含标签），用于首页海报展示。

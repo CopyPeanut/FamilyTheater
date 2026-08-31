@@ -41,7 +41,7 @@ public class MovieService : IMovieService
         _logger = logger;
     }
 
-    public async Task<ScanResult> ScanLibraryAsync()
+    public async Task<ScanResult> ScanLibraryAsync(bool fullRescan = false)
     {
         var result = new ScanResult();
 
@@ -52,24 +52,42 @@ public class MovieService : IMovieService
             return result;
         }
 
-        _logger.Info($"开始扫描电影库：{rootPath}");
+        var scanMode = fullRescan ? "完整" : "增量";
+        _logger.Info($"开始{scanMode}扫描电影库：{rootPath}");
 
         var posterRootPath = await _settingService.GetMoviePosterRootPathAsync();
-        var posterIndex = BuildPosterIndex(posterRootPath);
+        Dictionary<string, string>? posterIndex = null;
 
         using var db = _dbContextFactory.CreateDbContext();
-        var existingMovies = await db.Movies
-            .Include(m => m.MovieTags)
-            .ToDictionaryAsync(m => m.VideoFilePath, m => m, StringComparer.OrdinalIgnoreCase);
+        var existingMovies = fullRescan
+            ? await db.Movies
+                .Include(m => m.MovieTags)
+                .ToDictionaryAsync(m => m.VideoFilePath, m => m, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, Movie>(StringComparer.OrdinalIgnoreCase);
+        var existingVideoPaths = fullRescan
+            ? existingMovies.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : (await db.Movies
+                .AsNoTracking()
+                .Select(m => m.VideoFilePath)
+                .ToListAsync())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var discoveredVideos = 0;
         foreach (var videoFile in EnumerateVideoFilesRecursive(rootPath, result))
         {
             discoveredVideos++;
 
+            var exists = existingVideoPaths.Contains(videoFile);
+            if (!fullRescan && exists)
+            {
+                result.Skipped++;
+                continue;
+            }
+
             var folder = Path.GetDirectoryName(videoFile) ?? rootPath;
             var title = Path.GetFileNameWithoutExtension(videoFile);
             var autoPosterFolder = GetAutoPosterFolder(rootPath, posterRootPath, folder);
+            posterIndex ??= BuildPosterIndex(posterRootPath);
             var posterFile = FindPosterFileForVideo(videoFile, posterIndex, autoPosterFolder);
             if (posterFile == null)
             {
@@ -78,7 +96,7 @@ public class MovieService : IMovieService
 
             var tags = ExtractTagsFromPath(rootPath, folder);
 
-            if (existingMovies.TryGetValue(videoFile, out var movie))
+            if (exists && existingMovies.TryGetValue(videoFile, out var movie))
             {
                 if (ShouldRefreshScannedTitle(movie))
                 {
@@ -112,6 +130,7 @@ public class MovieService : IMovieService
 
                 db.Movies.Add(newMovie);
                 existingMovies[videoFile] = newMovie;
+                existingVideoPaths.Add(videoFile);
                 result.Added++;
             }
         }
@@ -122,8 +141,12 @@ public class MovieService : IMovieService
             return result;
         }
 
-        await db.SaveChangesAsync();
-        _logger.Info($"电影库扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
+        if (result.Added > 0 || result.Updated > 0)
+        {
+            await db.SaveChangesAsync();
+        }
+
+        _logger.Info($"电影库{scanMode}扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
         return result;
     }
 
