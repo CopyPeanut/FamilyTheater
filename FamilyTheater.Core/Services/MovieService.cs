@@ -106,6 +106,11 @@ public class MovieService : IMovieService
                 movie.FolderPath = folder;
                 movie.VideoFilePath = videoFile;
                 movie.PosterPath = SelectPosterPath(movie.PosterPath, posterFile);
+                if (string.IsNullOrWhiteSpace(movie.PosterPath))
+                {
+                    result.PosterFailed++;
+                }
+
                 movie.FileSizeBytes = GetFileSizeBytes(videoFile);
                 movie.LastScannedAt = DateTime.UtcNow;
                 SyncTags(movie, tags);
@@ -129,6 +134,11 @@ public class MovieService : IMovieService
                 }
 
                 db.Movies.Add(newMovie);
+                if (string.IsNullOrWhiteSpace(newMovie.PosterPath))
+                {
+                    result.PosterFailed++;
+                }
+
                 existingMovies[videoFile] = newMovie;
                 existingVideoPaths.Add(videoFile);
                 result.Added++;
@@ -146,7 +156,9 @@ public class MovieService : IMovieService
             await db.SaveChangesAsync();
         }
 
-        _logger.Info($"电影库{scanMode}扫描完成：新增 {result.Added}，更新 {result.Updated}，跳过 {result.Skipped}。RootPath={rootPath}");
+        _logger.Info(
+            $"电影库{scanMode}扫描完成：新增 {result.Added}，更新 {result.Updated}，" +
+            $"跳过 {result.Skipped}，海报失败 {result.PosterFailed}。RootPath={rootPath}");
         return result;
     }
 

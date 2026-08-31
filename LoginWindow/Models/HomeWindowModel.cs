@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace LoginWindow.Models
 {
@@ -39,6 +40,8 @@ namespace LoginWindow.Models
         private readonly Func<UserPermissionsWindow> _userPermissionsWindowFactory;
         private readonly Func<ChangePasswordWindow> _changePasswordWindowFactory;
         private readonly Dictionary<string, ICategoryHandler> _categoryHandlers;
+        private ConfigWindow? _configWindow;
+        private bool _isClosingDetachedWindows;
 
         public IMovieService MovieService => _movieService;
 
@@ -168,12 +171,7 @@ namespace LoginWindow.Models
                 CurrentPage = 1;
                 ApplyActiveCategoryFilter();
             });
-            OpenConfigCmd = ReactiveCommand.CreateFromTask(async () =>
-            {
-                var window = _configWindowFactory();
-                window.ShowDialog();
-                await RefreshActiveCategoryAsync();
-            });
+            OpenConfigCmd = ReactiveCommand.Create(OpenConfigWindow);
             OpenUserPermissionsCmd = ReactiveCommand.Create(() =>
             {
                 if (!_currentUserSession.IsAdmin)
@@ -182,11 +180,13 @@ namespace LoginWindow.Models
                 }
 
                 var window = _userPermissionsWindowFactory();
+                SetOwnerIfAvailable(window);
                 window.ShowDialog();
             });
             OpenChangePasswordCmd = ReactiveCommand.Create(() =>
             {
                 var window = _changePasswordWindowFactory();
+                SetOwnerIfAvailable(window);
                 window.ShowDialog();
             });
             LogoutCmd = ReactiveCommand.Create(() =>
@@ -234,6 +234,102 @@ namespace LoginWindow.Models
         public Task LoadMangasAsync()
         {
             return LoadCategoryAsync("manga");
+        }
+
+        private void OpenConfigWindow()
+        {
+            if (_configWindow != null)
+            {
+                RestoreAndActivate(_configWindow);
+                return;
+            }
+
+            var window = _configWindowFactory();
+            _configWindow = window;
+            PositionNearOwner(window);
+            window.Closed += ConfigWindow_Closed;
+            window.Show();
+            RestoreAndActivate(window);
+        }
+
+        private async void ConfigWindow_Closed(object? sender, EventArgs e)
+        {
+            if (sender is ConfigWindow window)
+            {
+                window.Closed -= ConfigWindow_Closed;
+            }
+
+            if (ReferenceEquals(_configWindow, sender))
+            {
+                _configWindow = null;
+            }
+
+            if (_isClosingDetachedWindows)
+            {
+                return;
+            }
+
+            await RefreshActiveCategoryAsync();
+        }
+
+        public void CloseDetachedWindows()
+        {
+            _isClosingDetachedWindows = true;
+            try
+            {
+                if (_configWindow != null)
+                {
+                    _configWindow.Closed -= ConfigWindow_Closed;
+                    _configWindow.Close();
+                    _configWindow = null;
+                }
+            }
+            finally
+            {
+                _isClosingDetachedWindows = false;
+            }
+        }
+
+        private void SetOwnerIfAvailable(Window window)
+        {
+            var owner = FindOwnerWindow();
+            if (owner != null && !ReferenceEquals(owner, window))
+            {
+                window.Owner = owner;
+            }
+        }
+
+        private Window? FindOwnerWindow()
+        {
+            return System.Windows.Application.Current.Windows
+                .OfType<HomeWindow>()
+                .FirstOrDefault(window => ReferenceEquals(window.DataContext, this) && window.IsVisible);
+        }
+
+        private void PositionNearOwner(Window window)
+        {
+            var owner = FindOwnerWindow();
+            if (owner == null)
+            {
+                window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                return;
+            }
+
+            var ownerWidth = owner.ActualWidth > 0 ? owner.ActualWidth : owner.Width;
+            var ownerHeight = owner.ActualHeight > 0 ? owner.ActualHeight : owner.Height;
+            window.WindowStartupLocation = WindowStartupLocation.Manual;
+            window.Left = owner.Left + Math.Max(0, (ownerWidth - window.Width) / 2);
+            window.Top = owner.Top + Math.Max(0, (ownerHeight - window.Height) / 2);
+        }
+
+        private static void RestoreAndActivate(Window window)
+        {
+            if (window.WindowState == WindowState.Minimized)
+            {
+                window.WindowState = WindowState.Normal;
+            }
+
+            window.Activate();
         }
 
         public async Task RefreshActiveCategoryAsync()

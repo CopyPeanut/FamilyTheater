@@ -441,6 +441,8 @@ namespace LoginWindow.Views
 
         protected override void OnClosed(EventArgs e)
         {
+            _viewModel.CloseDetachedWindows();
+
             foreach (var window in new List<Window>(_presentationWindows))
             {
                 window.Closed -= PresentationWindow_Closed;
