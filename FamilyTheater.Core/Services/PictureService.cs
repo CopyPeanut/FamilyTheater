@@ -22,7 +22,7 @@ public class PictureService : IPictureService
         _logger = logger;
     }
 
-    public async Task<ScanResult> ScanLibraryAsync()
+    public async Task<ScanResult> ScanLibraryAsync(bool fullRescan = false)
     {
         var result = new ScanResult();
 
@@ -36,9 +36,18 @@ public class PictureService : IPictureService
         _logger.Info($"开始扫描图片库：{rootPath}");
 
         using var db = _dbContextFactory.CreateDbContext();
-        var existingPictures = await db.Pictures
-            .Include(p => p.PictureTags)
-            .ToDictionaryAsync(p => p.FilePath, p => p, StringComparer.OrdinalIgnoreCase);
+        var existingPictures = fullRescan
+            ? await db.Pictures
+                .Include(p => p.PictureTags)
+                .ToDictionaryAsync(p => p.FilePath, p => p, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, Picture>(StringComparer.OrdinalIgnoreCase);
+        var existingPicturePaths = fullRescan
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(
+                await db.Pictures
+                    .Select(p => p.FilePath)
+                    .ToListAsync(),
+                StringComparer.OrdinalIgnoreCase);
 
         var discoveredImages = 0;
         foreach (var imageFile in EnumerateImageFilesRecursive(rootPath, result))
@@ -48,10 +57,16 @@ public class PictureService : IPictureService
             var folderPath = Path.GetDirectoryName(imageFile) ?? rootPath;
             var tagName = GetTagName(rootPath, folderPath);
             var fileName = Path.GetFileNameWithoutExtension(imageFile);
-            var fileSizeBytes = GetFileSizeBytes(imageFile);
+
+            if (!fullRescan && existingPicturePaths.Contains(imageFile))
+            {
+                result.Skipped++;
+                continue;
+            }
 
             if (existingPictures.TryGetValue(imageFile, out var picture))
             {
+                var fileSizeBytes = GetFileSizeBytes(imageFile);
                 picture.FileName = fileName;
                 picture.FolderPath = folderPath;
                 picture.FileSizeBytes = fileSizeBytes;
@@ -66,6 +81,7 @@ public class PictureService : IPictureService
             }
             else
             {
+                var fileSizeBytes = GetFileSizeBytes(imageFile);
                 var newPicture = new Picture
                 {
                     FilePath = imageFile,
@@ -79,6 +95,7 @@ public class PictureService : IPictureService
 
                 db.Pictures.Add(newPicture);
                 existingPictures[imageFile] = newPicture;
+                existingPicturePaths.Add(imageFile);
                 result.Added++;
             }
         }

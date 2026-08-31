@@ -35,7 +35,7 @@ public class MangaService : IMangaService
         _logger = logger;
     }
 
-    public async Task<ScanResult> ScanLibraryAsync()
+    public async Task<ScanResult> ScanLibraryAsync(bool fullRescan = false)
     {
         var result = new ScanResult();
         var rootPath = await _settingService.GetMangaRootPathAsync();
@@ -46,12 +46,21 @@ public class MangaService : IMangaService
         }
 
         var posterRootPath = await _settingService.GetMangaPosterRootPathAsync();
-        var posterIndex = BuildPosterIndex(posterRootPath);
+        Dictionary<string, string>? posterIndex = null;
 
         using var db = _dbContextFactory.CreateDbContext();
-        var existingMangas = await db.Mangas
-            .Include(m => m.MangaTags)
-            .ToDictionaryAsync(m => m.FilePath, m => m, StringComparer.OrdinalIgnoreCase);
+        var existingMangas = fullRescan
+            ? await db.Mangas
+                .Include(m => m.MangaTags)
+                .ToDictionaryAsync(m => m.FilePath, m => m, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, Manga>(StringComparer.OrdinalIgnoreCase);
+        var existingMangaPaths = fullRescan
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(
+                await db.Mangas
+                    .Select(m => m.FilePath)
+                    .ToListAsync(),
+                StringComparer.OrdinalIgnoreCase);
 
         var discoveredFiles = 0;
         foreach (var mangaFile in EnumerateMangaFilesRecursive(rootPath, result))
@@ -60,8 +69,14 @@ public class MangaService : IMangaService
 
             var folder = Path.GetDirectoryName(mangaFile) ?? rootPath;
             var title = Path.GetFileNameWithoutExtension(mangaFile);
+            if (!fullRescan && existingMangaPaths.Contains(mangaFile))
+            {
+                result.Skipped++;
+                continue;
+            }
+
             var autoPosterFolder = GetAutoPosterFolder(rootPath, posterRootPath, folder);
-            var posterPath = FindPosterFileForManga(mangaFile, posterIndex, autoPosterFolder);
+            var posterPath = FindPosterFileForManga(mangaFile, posterIndex ??= BuildPosterIndex(posterRootPath), autoPosterFolder);
             if (posterPath == null)
             {
                 posterPath = await ExtractPosterFromPdfAsync(mangaFile, autoPosterFolder, title);
@@ -103,6 +118,7 @@ public class MangaService : IMangaService
 
                 db.Mangas.Add(newManga);
                 existingMangas[mangaFile] = newManga;
+                existingMangaPaths.Add(mangaFile);
                 result.Added++;
             }
         }

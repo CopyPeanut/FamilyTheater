@@ -41,7 +41,7 @@ public class GameService : IGameService
         _logger = logger;
     }
 
-    public async Task<ScanResult> ScanLibraryAsync()
+    public async Task<ScanResult> ScanLibraryAsync(bool fullRescan = false)
     {
         var result = new ScanResult();
         var rootPath = await _settingService.GetGameRootPathAsync();
@@ -52,22 +52,37 @@ public class GameService : IGameService
         }
 
         var posterRootPath = await _settingService.GetGamePosterRootPathAsync();
-        var posterIndex = BuildPosterIndex(posterRootPath);
+        Dictionary<string, string>? posterIndex = null;
 
         using var db = _dbContextFactory.CreateDbContext();
-        var existingGames = await db.Games
-            .Include(g => g.GameTags)
-            .ToDictionaryAsync(g => g.FolderPath, g => g, StringComparer.OrdinalIgnoreCase);
+        var existingGames = fullRescan
+            ? await db.Games
+                .Include(g => g.GameTags)
+                .ToDictionaryAsync(g => g.FolderPath, g => g, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, Game>(StringComparer.OrdinalIgnoreCase);
+        var existingGameFolders = fullRescan
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(
+                await db.Games
+                    .Select(g => g.FolderPath)
+                    .ToListAsync(),
+                StringComparer.OrdinalIgnoreCase);
 
         var folders = FindGameFolders(rootPath);
         foreach (var folder in folders)
         {
             var title = Path.GetFileName(folder);
-            var posterPath = ResolvePosterFile(folder, title, posterRootPath, posterIndex);
-            var tags = ExtractTagsFromPath(rootPath, folder);
+
+            if (!fullRescan && existingGameFolders.Contains(folder))
+            {
+                result.Skipped++;
+                continue;
+            }
 
             if (existingGames.TryGetValue(folder, out var game))
             {
+                var posterPath = ResolvePosterFile(folder, title, posterRootPath, posterIndex ??= BuildPosterIndex(posterRootPath));
+                var tags = ExtractTagsFromPath(rootPath, folder);
                 game.Title = string.IsNullOrWhiteSpace(game.Title) ? title : game.Title;
                 game.PosterPath = ShouldKeepExistingPoster(game.PosterPath) ? game.PosterPath : posterPath;
                 game.FolderSizeBytes = 0;
@@ -77,6 +92,8 @@ public class GameService : IGameService
             }
             else
             {
+                var posterPath = ResolvePosterFile(folder, title, posterRootPath, posterIndex ??= BuildPosterIndex(posterRootPath));
+                var tags = ExtractTagsFromPath(rootPath, folder);
                 var newGame = new Game
                 {
                     Title = title,
@@ -93,6 +110,7 @@ public class GameService : IGameService
 
                 db.Games.Add(newGame);
                 existingGames[folder] = newGame;
+                existingGameFolders.Add(folder);
                 result.Added++;
             }
         }

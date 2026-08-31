@@ -32,6 +32,9 @@ namespace LoginWindow.Models
         public ReactiveCommand<string, Unit> BrowseCommand { get; }
         public ReactiveCommand<Unit, Unit> SaveCommand { get; }
         public ReactiveCommand<Unit, Unit> FullMovieScanCommand { get; }
+        public ReactiveCommand<Unit, Unit> FullPictureScanCommand { get; }
+        public ReactiveCommand<Unit, Unit> FullMangaScanCommand { get; }
+        public ReactiveCommand<Unit, Unit> FullGameScanCommand { get; }
 
         public ConfigWindowModel(
             ISettingService settingService,
@@ -51,6 +54,9 @@ namespace LoginWindow.Models
             var canSave = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning);
             SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
             FullMovieScanCommand = ReactiveCommand.CreateFromTask(FullMovieScanAsync, canSave);
+            FullPictureScanCommand = ReactiveCommand.CreateFromTask(FullPictureScanAsync, canSave);
+            FullMangaScanCommand = ReactiveCommand.CreateFromTask(FullMangaScanAsync, canSave);
+            FullGameScanCommand = ReactiveCommand.CreateFromTask(FullGameScanAsync, canSave);
             BrowseCommand = ReactiveCommand.CreateFromTask<string>(BrowseAsync, canSave);
 
             _ = LoadAsync();
@@ -140,17 +146,17 @@ namespace LoginWindow.Models
                     mediaMessage += $"，海报失败 {movieResult.PosterFailed} 部";
                 }
 
-                var pictureResult = await RunScanStageAsync("图片库", _pictureService.ScanLibraryAsync);
+                var pictureResult = await RunScanStageAsync("图片库（增量）", () => _pictureService.ScanLibraryAsync());
                 var pictureMessage = pictureResult.Added == 0 && pictureResult.Updated == 0 && pictureResult.Skipped == 0
                     ? "图片：未发现可入库的图片文件"
                     : $"图片：新增 {pictureResult.Added} 张，更新 {pictureResult.Updated} 张，跳过 {pictureResult.Skipped} 个文件夹";
 
-                var mangaResult = await RunScanStageAsync("漫画库", _mangaService.ScanLibraryAsync);
+                var mangaResult = await RunScanStageAsync("漫画库（增量）", () => _mangaService.ScanLibraryAsync());
                 var mangaMessage = mangaResult.Added == 0 && mangaResult.Updated == 0 && mangaResult.Skipped == 0
                     ? "漫画：未发现可入库的 PDF 文件"
                     : $"漫画：新增 {mangaResult.Added} 本，更新 {mangaResult.Updated} 本，跳过 {mangaResult.Skipped} 个文件夹";
 
-                var gameResult = await RunScanStageAsync("游戏库", _gameService.ScanLibraryAsync);
+                var gameResult = await RunScanStageAsync("游戏库（增量）", () => _gameService.ScanLibraryAsync());
                 var gameMessage = gameResult.Added == 0 && gameResult.Updated == 0 && gameResult.Skipped == 0
                     ? "游戏：未发现可入库的游戏文件夹"
                     : $"游戏：新增 {gameResult.Added} 个，更新 {gameResult.Updated} 个，跳过 {gameResult.Skipped} 个文件夹";
@@ -174,27 +180,45 @@ namespace LoginWindow.Models
 
         private async Task FullMovieScanAsync()
         {
+            await FullScanAsync("电影库（完整重扫）", "电影", "部", () => _movieService.ScanLibraryAsync(fullRescan: true));
+        }
+
+        private async Task FullPictureScanAsync()
+        {
+            await FullScanAsync("图片库（完整重扫）", "图片", "张", () => _pictureService.ScanLibraryAsync(fullRescan: true));
+        }
+
+        private async Task FullMangaScanAsync()
+        {
+            await FullScanAsync("漫画库（完整重扫）", "漫画", "本", () => _mangaService.ScanLibraryAsync(fullRescan: true));
+        }
+
+        private async Task FullGameScanAsync()
+        {
+            await FullScanAsync("游戏库（完整重扫）", "游戏", "个", () => _gameService.ScanLibraryAsync(fullRescan: true));
+        }
+
+        private async Task FullScanAsync(string stageName, string categoryName, string unitName, Func<Task<ScanResult>> scanAction)
+        {
             IsScanning = true;
             StatusMessage = "正在保存配置...";
 
             try
             {
                 await Task.Run(SaveSettingsAsync);
-                var result = await RunScanStageAsync(
-                    "电影库（完整重扫）",
-                    () => _movieService.ScanLibraryAsync(fullRescan: true));
+                var result = await RunScanStageAsync(stageName, scanAction);
                 StatusMessage = result.Added == 0 && result.Updated == 0 && result.Skipped == 0
-                    ? "电影完整扫描完成：未发现可入库的视频文件"
-                    : $"电影完整扫描完成：新增 {result.Added} 部，更新 {result.Updated} 部，跳过 {result.Skipped} 部";
+                    ? $"{categoryName}完整扫描完成：未发现可入库的文件"
+                    : $"{categoryName}完整扫描完成：新增 {result.Added} {unitName}，更新 {result.Updated} {unitName}，跳过 {result.Skipped} {unitName}";
                 if (result.PosterFailed > 0)
                 {
-                    StatusMessage += $"，海报失败 {result.PosterFailed} 部；详细日志：{GetCurrentLogFilePath()}";
+                    StatusMessage += $"，海报失败 {result.PosterFailed} {unitName}；详细日志：{GetCurrentLogFilePath()}";
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error("保存配置并完整扫描电影库失败。", ex);
-                StatusMessage = $"电影完整扫描失败：{ex.Message}；详细日志：{GetCurrentLogFilePath()}";
+                _logger.Error($"{categoryName}完整扫描失败。", ex);
+                StatusMessage = $"{categoryName}完整扫描失败：{ex.Message}；详细日志：{GetCurrentLogFilePath()}";
             }
             finally
             {

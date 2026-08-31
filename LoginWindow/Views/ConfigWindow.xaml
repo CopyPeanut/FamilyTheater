@@ -51,6 +51,18 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
+
+        <Style x:Key="FooterButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="122"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Background" Value="#1E1E1D"/>
+            <Setter Property="Foreground" Value="#f1b054"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -176,11 +188,18 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="完整重扫电影" Command="{Binding FullMovieScanCommand}"
                         ToolTip="重新处理所有已有视频，并重试缺失海报"
-                        Width="140" Height="32" Margin="0,0,10,0"
-                        Background="#1E1E1D" Foreground="#f1b054" FontWeight="Bold"
-                        BorderThickness="0" Cursor="Hand" FontSize="14"/>
+                        Style="{StaticResource FooterButtonStyle}"/>
+                <Button Content="完整重扫图片" Command="{Binding FullPictureScanCommand}"
+                        ToolTip="重新处理所有已有图片，并同步文件信息和标签"
+                        Style="{StaticResource FooterButtonStyle}"/>
+                <Button Content="完整重扫漫画" Command="{Binding FullMangaScanCommand}"
+                        ToolTip="重新处理所有已有 PDF，并重试缺失封面"
+                        Style="{StaticResource FooterButtonStyle}"/>
+                <Button Content="完整重扫游戏" Command="{Binding FullGameScanCommand}"
+                        ToolTip="重新处理所有已有游戏文件夹，并同步海报和标签"
+                        Style="{StaticResource FooterButtonStyle}"/>
                 <Button Content="保存（增量扫描）" Command="{Binding SaveCommand}"
-                        ToolTip="已有视频直接跳过，只处理新导入的视频"
+                        ToolTip="已有记录直接跳过，只处理新导入的文件"
                         Width="150" Height="32"
                         Background="#1E1E1D" Foreground="#f1b054" FontWeight="Bold"
                         BorderThickness="0" Cursor="Hand" FontSize="14"/>

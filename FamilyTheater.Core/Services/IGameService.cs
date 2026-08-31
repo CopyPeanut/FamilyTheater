@@ -4,7 +4,7 @@ namespace FamilyTheater.Core.Services;
 
 public interface IGameService
 {
-    Task<ScanResult> ScanLibraryAsync();
+    Task<ScanResult> ScanLibraryAsync(bool fullRescan = false);
 
     Task<List<Game>> GetAllGamesAsync();
 

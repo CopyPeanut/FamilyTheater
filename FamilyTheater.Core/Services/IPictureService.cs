@@ -11,7 +11,7 @@ public interface IPictureService
     /// 子文件夹名作为标签，图片文件本身没有独立文件夹。
     /// 已存在的记录（按 FilePath 匹配）更新信息，不重复新增。
     /// </summary>
-    Task<ScanResult> ScanLibraryAsync();
+    Task<ScanResult> ScanLibraryAsync(bool fullRescan = false);
 
     /// <summary>
     /// 获取全部图片（含标签），用于首页展示。
