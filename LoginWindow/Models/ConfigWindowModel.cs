@@ -1,12 +1,15 @@
+using FamilyTheater.Core.Enum;
 using FamilyTheater.Core.Logger;
 using FamilyTheater.Core.Services;
+using LoginWindow.Views;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System;
 using System.IO;
 using System.Reactive;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using System.Windows;
+using Forms = System.Windows.Forms;
 
 namespace LoginWindow.Models
 {
@@ -17,7 +20,11 @@ namespace LoginWindow.Models
         private readonly IPictureService _pictureService;
         private readonly IGameService _gameService;
         private readonly IMangaService _mangaService;
+        private readonly ILibraryMaintenanceService _libraryMaintenanceService;
+        private readonly ICurrentUserSession _currentUserSession;
         private readonly IAppLogger _logger;
+
+        public bool IsAdmin => _currentUserSession.IsAdmin;
 
         [Reactive] public string MediaRootPath { get; set; } = string.Empty;
         [Reactive] public string MoviePosterRootPath { get; set; } = string.Empty;
@@ -36,6 +43,7 @@ namespace LoginWindow.Models
         public ReactiveCommand<Unit, Unit> FullMangaScanCommand { get; }
         public ReactiveCommand<Unit, Unit> FullGameScanCommand { get; }
         public ReactiveCommand<Unit, Unit> FullAllScanCommand { get; }
+        public ReactiveCommand<Unit, Unit> ClearLibraryCommand { get; }
 
         public ConfigWindowModel(
             ISettingService settingService,
@@ -43,6 +51,8 @@ namespace LoginWindow.Models
             IPictureService pictureService,
             IGameService gameService,
             IMangaService mangaService,
+            ILibraryMaintenanceService libraryMaintenanceService,
+            ICurrentUserSession currentUserSession,
             IAppLogger logger)
         {
             _settingService = settingService;
@@ -50,15 +60,19 @@ namespace LoginWindow.Models
             _pictureService = pictureService;
             _gameService = gameService;
             _mangaService = mangaService;
+            _libraryMaintenanceService = libraryMaintenanceService;
+            _currentUserSession = currentUserSession;
             _logger = logger;
 
             var canSave = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning);
+            var canClearLibrary = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning && IsAdmin);
             SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
             FullMovieScanCommand = ReactiveCommand.CreateFromTask(FullMovieScanAsync, canSave);
             FullPictureScanCommand = ReactiveCommand.CreateFromTask(FullPictureScanAsync, canSave);
             FullMangaScanCommand = ReactiveCommand.CreateFromTask(FullMangaScanAsync, canSave);
             FullGameScanCommand = ReactiveCommand.CreateFromTask(FullGameScanAsync, canSave);
             FullAllScanCommand = ReactiveCommand.CreateFromTask(FullAllScanAsync, canSave);
+            ClearLibraryCommand = ReactiveCommand.CreateFromTask(ClearLibraryAsync, canClearLibrary);
             BrowseCommand = ReactiveCommand.CreateFromTask<string>(BrowseAsync, canSave);
 
             _ = LoadAsync();
@@ -85,7 +99,7 @@ namespace LoginWindow.Models
 
         private Task BrowseAsync(string target)
         {
-            var dialog = new FolderBrowserDialog
+            var dialog = new Forms.FolderBrowserDialog
             {
                 ShowNewFolderButton = true,
                 Description = target switch
@@ -100,7 +114,7 @@ namespace LoginWindow.Models
                 }
             };
 
-            if (dialog.ShowDialog() == DialogResult.OK)
+            if (dialog.ShowDialog() == Forms.DialogResult.OK)
             {
                 switch (target)
                 {
@@ -242,6 +256,46 @@ namespace LoginWindow.Models
             {
                 _logger.Error("完整扫描全部媒体库失败。", ex);
                 StatusMessage = $"完整扫描全部失败：{ex.Message}；详细日志：{GetCurrentLogFilePath()}";
+            }
+            finally
+            {
+                IsScanning = false;
+            }
+        }
+
+        private async Task ClearLibraryAsync()
+        {
+            if (!IsAdmin)
+            {
+                StatusMessage = "当前账户不是 admin，不能清空媒体库。";
+                return;
+            }
+
+            var confirmed = CustomMessageBox.ShowDialog(
+                "危险操作：这会清空当前媒体库数据库中的电影、图片、漫画、游戏及其标签记录。\n\n账户不会删除，路径配置不会删除，磁盘上的文件也不会删除。\n\n是否继续？",
+                LogLevel.WARN,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (!confirmed)
+            {
+                return;
+            }
+
+            IsScanning = true;
+            StatusMessage = "正在清空媒体库...";
+
+            try
+            {
+                var result = await Task.Run(_libraryMaintenanceService.ClearLibraryAsync);
+                StatusMessage =
+                    $"媒体库已清空：删除 {result.TotalItems} 条内容记录、{result.TotalTags} 条标签记录。" +
+                    "关闭设置窗口后，展示页会按当前数据库重新刷新。";
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("清空媒体库失败。", ex);
+                StatusMessage = $"清空媒体库失败：{ex.Message}；详细日志：{GetCurrentLogFilePath()}";
             }
             finally
             {

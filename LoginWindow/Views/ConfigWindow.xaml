@@ -95,6 +95,11 @@
             <Setter Property="Foreground" Value="#f1b054"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
+
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="#C0392B"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -217,6 +222,21 @@
                                 Margin="8,8,0,0"
                                 Style="{StaticResource ScanButtonStyle}"/>
                     </UniformGrid>
+                    <Button Content="清空媒体库"
+                            Command="{Binding ClearLibraryCommand}"
+                            ToolTip="删除当前媒体库中的电影、图片、漫画、游戏及标签记录"
+                            Margin="0,0,0,14">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAdmin}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <ProgressBar Height="6" IsIndeterminate="True" Margin="0,0,0,8">
                         <ProgressBar.Style>
                             <Style TargetType="ProgressBar">
