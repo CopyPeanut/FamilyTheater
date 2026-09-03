@@ -5,25 +5,40 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LoginWindow.Views"
         mc:Ignorable="d"
-        Title="CustomMessageBox" Width="420" Height="250"
+        Title="CustomMessageBox"
+        MinWidth="360"
+        MaxWidth="760"
+        MaxHeight="620"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize"
         Background="#1E1E1D"
         >
-    <Grid Margin="24,20,24,16">
+    <Grid Margin="24,22,24,18" MinWidth="312">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <local:StarfieldBackground />
-        <!-- 消息内容（支持换行） -->
-        <TextBlock Grid.Row="0" Text="{Binding Message}" TextWrapping="Wrap" Foreground="#FFFFFF" x:Name="WindowMessage"
-                   FontSize="28" LineHeight="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        <ScrollViewer Grid.Row="0"
+                      MaxHeight="480"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <TextBlock Text="{Binding Message}"
+                       TextWrapping="Wrap"
+                       Foreground="#FFFFFF"
+                       x:Name="WindowMessage"
+                       FontSize="20"
+                       LineHeight="28"
+                       MaxWidth="680"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Stretch"/>
+        </ScrollViewer>
 
-        <!-- 按钮区 -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right"
-                    Margin="0,20,0,0">
+                    Margin="0,22,0,0">
             <Button x:Name="BtnCancel" Content="取 消" MinWidth="80" Margin="0,0,12,0"
                     Style="{StaticResource ButtonDefault}" Click="OnCancel"/>
             <Button x:Name="BtnConfirm" Content="确 定" MinWidth="80"
