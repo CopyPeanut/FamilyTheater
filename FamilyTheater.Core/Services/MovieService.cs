@@ -4,8 +4,6 @@ using FamilyTheater.Core.Logger;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace FamilyTheater.Core.Services;
@@ -23,8 +21,7 @@ public class MovieService : IMovieService
     };
 
     private static readonly string[] PosterNamePriority = { "poster", "cover", "folder" };
-    private const string AutoPosterSuffix = "_poster_auto";
-    private const int AutoPosterHashLength = 12;
+    private const string LegacyAutoPosterSuffix = "_poster_auto";
     private const double PosterCapturePositionRatio = 0.10;
     private static readonly Regex DurationPattern = new(
         @"Duration:\s*(?<duration>\d{2}:\d{2}:\d{2}(?:\.\d+)?)",
@@ -86,12 +83,12 @@ public class MovieService : IMovieService
 
             var folder = Path.GetDirectoryName(videoFile) ?? rootPath;
             var title = Path.GetFileNameWithoutExtension(videoFile);
-            var autoPosterFolder = GetAutoPosterFolder(rootPath, posterRootPath, folder);
+            var posterFolder = GetPosterFolder(rootPath, posterRootPath, folder);
             posterIndex ??= BuildPosterIndex(posterRootPath);
-            var posterFile = FindPosterFileForVideo(videoFile, posterIndex, autoPosterFolder);
-            if (posterFile == null)
+            var posterFile = FindPosterFileForVideo(videoFile, posterIndex, posterFolder);
+            if (posterFile == null && posterFolder != null)
             {
-                posterFile = await ExtractPosterFromVideoAsync(videoFile, autoPosterFolder, title);
+                posterFile = await ExtractPosterFromVideoAsync(videoFile, posterFolder, title);
             }
 
             var tags = ExtractTagsFromPath(rootPath, folder);
@@ -105,7 +102,7 @@ public class MovieService : IMovieService
 
                 movie.FolderPath = folder;
                 movie.VideoFilePath = videoFile;
-                movie.PosterPath = SelectPosterPath(movie.PosterPath, posterFile);
+                movie.PosterPath = SelectPosterPath(movie.PosterPath, posterFile, posterRootPath);
                 if (string.IsNullOrWhiteSpace(movie.PosterPath))
                 {
                     result.PosterFailed++;
@@ -506,7 +503,7 @@ public class MovieService : IMovieService
     private string? FindPosterFileForVideo(
         string videoFile,
         Dictionary<string, string> posterIndex,
-        string autoPosterFolder)
+        string? autoPosterFolder)
     {
         var title = Path.GetFileNameWithoutExtension(videoFile);
         if (posterIndex.TryGetValue(title, out var indexedPoster))
@@ -514,19 +511,12 @@ public class MovieService : IMovieService
             return indexedPoster;
         }
 
-        var folder = Path.GetDirectoryName(videoFile);
-        if (string.IsNullOrEmpty(folder))
+        if (string.IsNullOrEmpty(autoPosterFolder))
         {
             return null;
         }
 
-        var localPoster = FindPosterFile(folder, title);
-        if (localPoster != null)
-        {
-            return localPoster;
-        }
-
-        var autoPosterPath = Path.Combine(autoPosterFolder, $"{GetAutoPosterFileName(videoFile, title)}.jpg");
+        var autoPosterPath = Path.Combine(autoPosterFolder, $"{GetSafeFileName(title)}.jpg");
         return File.Exists(autoPosterPath) ? autoPosterPath : null;
     }
 
@@ -558,11 +548,11 @@ public class MovieService : IMovieService
         }
     }
 
-    private static string GetAutoPosterFolder(string mediaRootPath, string? posterRootPath, string videoFolder)
+    private static string? GetPosterFolder(string mediaRootPath, string? posterRootPath, string videoFolder)
     {
-        if (string.IsNullOrWhiteSpace(posterRootPath) || !Directory.Exists(posterRootPath))
+        if (string.IsNullOrWhiteSpace(posterRootPath))
         {
-            return videoFolder;
+            return null;
         }
 
         var relative = Path.GetRelativePath(mediaRootPath, videoFolder);
@@ -571,7 +561,7 @@ public class MovieService : IMovieService
             relative = string.Empty;
         }
 
-        return Path.Combine(posterRootPath, "poster_auto", relative);
+        return Path.Combine(posterRootPath, relative);
     }
 
     private long GetFileSizeBytes(string videoFile)
@@ -622,52 +612,8 @@ public class MovieService : IMovieService
         }
 
         var extension = Path.GetExtension(posterPath);
-        var oldName = Path.GetFileNameWithoutExtension(posterPath);
-        var suffix = GetAutoPosterRenameSuffix(oldName);
 
-        return Path.Combine(folder, $"{GetSafeFileName(title)}{suffix}{extension}");
-    }
-
-    private string? FindPosterFile(string folder, string? preferredTitle = null)
-    {
-        List<string> images;
-        try
-        {
-            images = Directory.EnumerateFiles(folder, "*", CreateEnumerationOptions(recurse: false))
-                .Where(f => PosterExtensions.Contains(Path.GetExtension(f)) && !IsAutoGeneratedPosterFile(f))
-                .ToList();
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.Warn($"无权限读取电影海报文件夹：{folder}", ex);
-            return null;
-        }
-        catch (DirectoryNotFoundException ex)
-        {
-            _logger.Warn($"电影海报文件夹不存在：{folder}", ex);
-            return null;
-        }
-
-        if (images.Count == 0)
-            return null;
-
-        if (!string.IsNullOrWhiteSpace(preferredTitle))
-        {
-            var preferredMatch = images.FirstOrDefault(f =>
-                Path.GetFileNameWithoutExtension(f).Equals(preferredTitle, StringComparison.OrdinalIgnoreCase));
-            if (preferredMatch != null)
-                return preferredMatch;
-        }
-
-        foreach (var priorityName in PosterNamePriority)
-        {
-            var match = images.FirstOrDefault(f =>
-                Path.GetFileNameWithoutExtension(f).Equals(priorityName, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
-                return match;
-        }
-
-        return images[0];
+        return Path.Combine(folder, $"{GetSafeFileName(title)}{extension}");
     }
 
     private static EnumerationOptions CreateEnumerationOptions(bool recurse)
@@ -694,7 +640,12 @@ public class MovieService : IMovieService
             }
 
             Directory.CreateDirectory(folder);
-            posterPath = Path.Combine(folder, $"{GetAutoPosterFileName(videoPath, title)}.jpg");
+            posterPath = Path.Combine(folder, $"{GetSafeFileName(title)}.jpg");
+            if (File.Exists(posterPath))
+            {
+                return posterPath;
+            }
+
             var duration = await GetVideoDurationAsync(videoPath);
             var capturePosition = duration.HasValue && duration.Value > TimeSpan.Zero
                 ? TimeSpan.FromTicks((long)(duration.Value.Ticks * PosterCapturePositionRatio))
@@ -850,44 +801,6 @@ public class MovieService : IMovieService
         }
     }
 
-    private static string GetAutoPosterFileName(string videoPath, string title)
-    {
-        var normalizedPath = Path.GetFullPath(videoPath).ToUpperInvariant();
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalizedPath)))
-            .Substring(0, AutoPosterHashLength)
-            .ToLowerInvariant();
-
-        return $"{GetSafeFileName(title)}_{hash}{AutoPosterSuffix}";
-    }
-
-    private static string GetAutoPosterRenameSuffix(string oldName)
-    {
-        if (!oldName.EndsWith(AutoPosterSuffix, StringComparison.OrdinalIgnoreCase))
-        {
-            return string.Empty;
-        }
-
-        var nameBeforeSuffix = oldName.Substring(0, oldName.Length - AutoPosterSuffix.Length);
-        var hashSeparatorIndex = nameBeforeSuffix.LastIndexOf('_');
-        if (hashSeparatorIndex < 0)
-        {
-            return AutoPosterSuffix;
-        }
-
-        var hash = nameBeforeSuffix.Substring(hashSeparatorIndex + 1);
-        return IsAutoPosterHash(hash)
-            ? $"_{hash}{AutoPosterSuffix}"
-            : AutoPosterSuffix;
-    }
-
-    private static bool IsAutoPosterHash(string value)
-    {
-        return value.Length == AutoPosterHashLength &&
-               value.All(ch => (ch >= '0' && ch <= '9') ||
-                               (ch >= 'a' && ch <= 'f') ||
-                               (ch >= 'A' && ch <= 'F'));
-    }
-
     private static bool IsAutoGeneratedPosterFile(string? file)
     {
         if (string.IsNullOrWhiteSpace(file))
@@ -896,12 +809,16 @@ public class MovieService : IMovieService
         }
 
         return Path.GetFileNameWithoutExtension(file)
-            .EndsWith(AutoPosterSuffix, StringComparison.OrdinalIgnoreCase);
+            .EndsWith(LegacyAutoPosterSuffix, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string? SelectPosterPath(string? existingPosterPath, string? scannedPosterPath)
+    private static string? SelectPosterPath(
+        string? existingPosterPath,
+        string? scannedPosterPath,
+        string? posterRootPath)
     {
         if (ShouldKeepExistingPoster(existingPosterPath) &&
+            IsPathUnderRoot(existingPosterPath, posterRootPath) &&
             !IsAutoGeneratedPosterFile(existingPosterPath))
         {
             return existingPosterPath;
@@ -915,6 +832,26 @@ public class MovieService : IMovieService
         return !string.IsNullOrWhiteSpace(posterPath) &&
                File.Exists(posterPath) &&
                PosterExtensions.Contains(Path.GetExtension(posterPath));
+    }
+
+    private static bool IsPathUnderRoot(string? path, string? rootPath)
+    {
+        if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(rootPath))
+        {
+            return false;
+        }
+
+        var fullPath = Path.GetFullPath(path);
+        var fullRootPath = Path.GetFullPath(rootPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        return fullPath.Equals(fullRootPath, StringComparison.OrdinalIgnoreCase) ||
+               fullPath.StartsWith(
+                   fullRootPath + Path.DirectorySeparatorChar,
+                   StringComparison.OrdinalIgnoreCase) ||
+               fullPath.StartsWith(
+                   fullRootPath + Path.AltDirectorySeparatorChar,
+                   StringComparison.OrdinalIgnoreCase);
     }
 
     private static string GetSafeFileName(string fileName)

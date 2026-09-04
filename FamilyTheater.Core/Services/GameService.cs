@@ -81,10 +81,10 @@ public class GameService : IGameService
 
             if (existingGames.TryGetValue(folder, out var game))
             {
-                var posterPath = ResolvePosterFile(folder, title, posterRootPath, posterIndex ??= BuildPosterIndex(posterRootPath));
+                var posterPath = ResolvePosterFile(title, posterIndex ??= BuildPosterIndex(posterRootPath));
                 var tags = ExtractTagsFromPath(rootPath, folder);
                 game.Title = string.IsNullOrWhiteSpace(game.Title) ? title : game.Title;
-                game.PosterPath = ShouldKeepExistingPoster(game.PosterPath) ? game.PosterPath : posterPath;
+                game.PosterPath = SelectPosterPath(game.PosterPath, posterPath, posterRootPath);
                 game.FolderSizeBytes = 0;
                 game.LastScannedAt = DateTime.UtcNow;
                 SyncTags(game, tags);
@@ -92,7 +92,7 @@ public class GameService : IGameService
             }
             else
             {
-                var posterPath = ResolvePosterFile(folder, title, posterRootPath, posterIndex ??= BuildPosterIndex(posterRootPath));
+                var posterPath = ResolvePosterFile(title, posterIndex ??= BuildPosterIndex(posterRootPath));
                 var tags = ExtractTagsFromPath(rootPath, folder);
                 var newGame = new Game
                 {
@@ -443,6 +443,13 @@ public class GameService : IGameService
 
                 var name = Path.GetFileNameWithoutExtension(file);
                 result.TryAdd(NormalizeKey(name), file);
+
+                var parentName = Path.GetFileName(Path.GetDirectoryName(file));
+                if (PosterNamePriority.Contains(name, StringComparer.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(parentName))
+                {
+                    result.TryAdd(NormalizeKey(parentName), file);
+                }
             }
         }
         catch (Exception ex)
@@ -454,85 +461,12 @@ public class GameService : IGameService
     }
 
     private string? ResolvePosterFile(
-        string gameFolder,
         string title,
-        string? posterRootPath,
         Dictionary<string, string> posterIndex)
     {
-        if (posterIndex.TryGetValue(NormalizeKey(title), out var indexedPoster))
-        {
-            return indexedPoster;
-        }
-
-        var localPoster = FindLocalPosterFile(gameFolder);
-        if (localPoster == null)
-        {
-            return null;
-        }
-
-        var preservedPoster = PreservePoster(localPoster, title, posterRootPath);
-        return preservedPoster ?? localPoster;
-    }
-
-    private static string? FindLocalPosterFile(string gameFolder)
-    {
-        List<string> images;
-        try
-        {
-            images = Directory.EnumerateFiles(gameFolder, "*", CreateEnumerationOptions(recurse: false))
-                .Where(f => PosterExtensions.Contains(Path.GetExtension(f)))
-                .ToList();
-        }
-        catch
-        {
-            return null;
-        }
-
-        foreach (var priorityName in PosterNamePriority)
-        {
-            var match = images.FirstOrDefault(f =>
-                Path.GetFileNameWithoutExtension(f).Equals(priorityName, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
-            {
-                return match;
-            }
-        }
-
-        return images.FirstOrDefault();
-    }
-
-    private string? PreservePoster(string localPosterPath, string title, string? posterRootPath)
-    {
-        if (string.IsNullOrWhiteSpace(posterRootPath))
-        {
-            return null;
-        }
-
-        try
-        {
-            Directory.CreateDirectory(posterRootPath);
-
-            var posterRoot = new DirectoryInfo(posterRootPath).FullName;
-            var localPoster = new FileInfo(localPosterPath).FullName;
-            if (localPoster.StartsWith(posterRoot, StringComparison.OrdinalIgnoreCase))
-            {
-                return localPoster;
-            }
-
-            var extension = Path.GetExtension(localPosterPath);
-            var targetPath = Path.Combine(posterRootPath, $"{NormalizeFileName(title)}{extension}");
-            if (!File.Exists(targetPath))
-            {
-                File.Copy(localPosterPath, targetPath);
-            }
-
-            return targetPath;
-        }
-        catch (Exception ex)
-        {
-            _logger.Warn($"保存游戏海报副本失败。Title={title}, LocalPosterPath={localPosterPath}, PosterRootPath={posterRootPath}", ex);
-            return null;
-        }
+        return posterIndex.TryGetValue(NormalizeKey(title), out var indexedPoster)
+            ? indexedPoster
+            : null;
     }
 
     private static List<string> FindExecutableCandidates(string gameFolder, string title)
@@ -571,6 +505,37 @@ public class GameService : IGameService
         return !string.IsNullOrWhiteSpace(posterPath) &&
                File.Exists(posterPath) &&
                PosterExtensions.Contains(Path.GetExtension(posterPath));
+    }
+
+    private static string? SelectPosterPath(
+        string? existingPosterPath,
+        string? scannedPosterPath,
+        string? posterRootPath)
+    {
+        return ShouldKeepExistingPoster(existingPosterPath) &&
+               IsPathUnderRoot(existingPosterPath, posterRootPath)
+            ? existingPosterPath
+            : scannedPosterPath;
+    }
+
+    private static bool IsPathUnderRoot(string? path, string? rootPath)
+    {
+        if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(rootPath))
+        {
+            return false;
+        }
+
+        var fullPath = Path.GetFullPath(path);
+        var fullRootPath = Path.GetFullPath(rootPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        return fullPath.Equals(fullRootPath, StringComparison.OrdinalIgnoreCase) ||
+               fullPath.StartsWith(
+                   fullRootPath + Path.DirectorySeparatorChar,
+                   StringComparison.OrdinalIgnoreCase) ||
+               fullPath.StartsWith(
+                   fullRootPath + Path.AltDirectorySeparatorChar,
+                   StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsLikelyLaunchExecutable(string path)
