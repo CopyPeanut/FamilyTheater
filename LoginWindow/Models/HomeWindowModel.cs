@@ -142,8 +142,14 @@ namespace LoginWindow.Models
                     publishPageItems: ReplaceCurrentMangas)
             };
 
-            var canMoveBack = this.WhenAnyValue(x => x.CurrentPage, page => page > 1);
-            var canMoveForward = this.WhenAnyValue(x => x.CurrentPage, page => page < TotalPages);
+            var canMoveBack = this.WhenAnyValue(
+                x => x.CurrentPage,
+                x => x.TotalPages,
+                (page, totalPages) => totalPages > 1 && page > 1);
+            var canMoveForward = this.WhenAnyValue(
+                x => x.CurrentPage,
+                x => x.TotalPages,
+                (page, totalPages) => page < totalPages);
 
             FirstPageCmd = ReactiveCommand.Create(() => CurrentPage = 1, canMoveBack);
             PrevPageCmd = ReactiveCommand.Create(() => CurrentPage--, canMoveBack);
