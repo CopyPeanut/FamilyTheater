@@ -356,6 +356,40 @@ namespace LoginWindow.Views
             }
         }
 
+        private async void DeleteLocalFile_Click(object sender, RoutedEventArgs e)
+        {
+            var message = File.Exists(_movie.VideoFilePath)
+                ? $"将删除以下电影本地文件，并从列表中移除该电影。封面文件不会删除。是否继续？\n\n{_movie.Title}\n{_movie.VideoFilePath}"
+                : $"当前电影本地文件不存在，将只从列表中移除该电影记录。是否继续？\n\n{_movie.Title}\n{_movie.VideoFilePath}";
+
+            if (!CustomMessageBox.ShowDialog(message))
+            {
+                return;
+            }
+
+            var deleteButton = sender as System.Windows.Controls.Button;
+            if (deleteButton != null)
+            {
+                deleteButton.IsEnabled = false;
+            }
+
+            try
+            {
+                await _movieService.DeleteMovieAsync(_movie.Id, deleteLocalFile: true);
+                Close();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Delete movie from detail failed. MovieId={_movie.Id}, VideoFilePath={_movie.VideoFilePath}", ex);
+                CustomMessageBox.Show($"删除失败：\n{ex.Message}", FamilyTheater.Core.Enum.LogLevel.ERROR);
+
+                if (deleteButton != null)
+                {
+                    deleteButton.IsEnabled = true;
+                }
+            }
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             if (e.Key == Key.Escape)

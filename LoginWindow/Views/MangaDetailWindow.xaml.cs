@@ -341,6 +341,40 @@ namespace LoginWindow.Views
             }
         }
 
+        private async void DeleteLocalFile_Click(object sender, RoutedEventArgs e)
+        {
+            var message = File.Exists(_manga.FilePath)
+                ? $"将删除以下漫画本地文件，并从列表中移除该漫画。封面文件不会删除。是否继续？\n\n{_manga.Title}\n{_manga.FilePath}"
+                : $"当前漫画本地文件不存在，将只从列表中移除该漫画记录。是否继续？\n\n{_manga.Title}\n{_manga.FilePath}";
+
+            if (!CustomMessageBox.ShowDialog(message))
+            {
+                return;
+            }
+
+            var deleteButton = sender as System.Windows.Controls.Button;
+            if (deleteButton != null)
+            {
+                deleteButton.IsEnabled = false;
+            }
+
+            try
+            {
+                await _mangaService.DeleteMangaAsync(_manga.Id, deleteLocalFile: true);
+                Close();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Delete manga from detail failed. MangaId={_manga.Id}, FilePath={_manga.FilePath}", ex);
+                CustomMessageBox.Show($"删除失败：\n{ex.Message}", FamilyTheater.Core.Enum.LogLevel.ERROR);
+
+                if (deleteButton != null)
+                {
+                    deleteButton.IsEnabled = true;
+                }
+            }
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             if (e.Key == Key.Escape)

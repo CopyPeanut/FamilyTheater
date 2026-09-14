@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:LoginWindow.Views"
         Title="图片详情" Background="#1E1E1D"
-        Width="800" Height="600"
+        Width="800" Height="620"
         WindowStartupLocation="CenterOwner"
         Style="{DynamicResource WindowBaseStyle}"
         ResizeMode="NoResize">
@@ -67,15 +67,22 @@
             </StackPanel>
 
             <!-- 右侧封面（图片本身） -->
-            <Border Grid.Column="1" Width="300" MaxHeight="400" CornerRadius="8"
-                    Background="#2A2A28" ClipToBounds="True" VerticalAlignment="Top">
-                <Grid>
-                    <Image x:Name="PosterImage" Stretch="Uniform"/>
-                    <TextBlock Text="🖼" FontSize="48" Foreground="#666666"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               x:Name="PosterPlaceholder"/>
-                </Grid>
-            </Border>
+            <StackPanel Grid.Column="1" Width="300" VerticalAlignment="Top">
+                <Border Width="300" MaxHeight="400" CornerRadius="8"
+                        Background="#2A2A28" ClipToBounds="True">
+                    <Grid>
+                        <Image x:Name="PosterImage" Stretch="Uniform"/>
+                        <TextBlock Text="🖼" FontSize="48" Foreground="#666666"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   x:Name="PosterPlaceholder"/>
+                    </Grid>
+                </Border>
+                <Button Content="删除" Click="DeleteLocalFile_Click"
+                        HorizontalAlignment="Right" Height="30" Margin="0,8,0,0"
+                        Padding="12,0" Background="#7A2E2E" Foreground="White"
+                        BorderBrush="#B84545" BorderThickness="1"
+                        Cursor="Hand" FontSize="12" FontWeight="Bold"/>
+            </StackPanel>
         </Grid>
 
         <!-- ═══════════════ 底部：标签选择栏 ═══════════════ -->

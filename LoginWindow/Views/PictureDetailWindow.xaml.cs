@@ -4,6 +4,7 @@ using FamilyTheater.Core.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -195,6 +196,40 @@ namespace LoginWindow.Views
             foreach (var tag in filteredTags)
             {
                 _allTags.Add(tag);
+            }
+        }
+
+        private async void DeleteLocalFile_Click(object sender, RoutedEventArgs e)
+        {
+            var message = File.Exists(_picture.FilePath)
+                ? $"将删除以下图片本地文件，并从列表中移除该图片。是否继续？\n\n{_picture.FileName}\n{_picture.FilePath}"
+                : $"当前图片本地文件不存在，将只从列表中移除该图片记录。是否继续？\n\n{_picture.FileName}\n{_picture.FilePath}";
+
+            if (!CustomMessageBox.ShowDialog(message))
+            {
+                return;
+            }
+
+            var deleteButton = sender as System.Windows.Controls.Button;
+            if (deleteButton != null)
+            {
+                deleteButton.IsEnabled = false;
+            }
+
+            try
+            {
+                await _pictureService.DeletePictureAsync(_picture.Id, deleteLocalFile: true);
+                Close();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Delete picture from detail failed. PictureId={_picture.Id}, FilePath={_picture.FilePath}", ex);
+                CustomMessageBox.Show($"删除失败：\n{ex.Message}", FamilyTheater.Core.Enum.LogLevel.ERROR);
+
+                if (deleteButton != null)
+                {
+                    deleteButton.IsEnabled = true;
+                }
             }
         }
 
