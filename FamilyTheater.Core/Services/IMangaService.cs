@@ -22,5 +22,5 @@ public interface IMangaService
 
     Task DeleteTagAsync(string tagName, bool excludeFromScan = false);
 
-    Task DeleteMangaAsync(int mangaId);
+    Task DeleteMangaAsync(int mangaId, bool deleteLocalFile = false);
 }

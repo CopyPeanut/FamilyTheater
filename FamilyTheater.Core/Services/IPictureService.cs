@@ -43,5 +43,5 @@ public interface IPictureService
     /// <summary>
     /// 删除图片记录及其所有标签关联（PictureTag），不删除 Tag 记录本身。
     /// </summary>
-    Task DeletePictureAsync(int pictureId);
+    Task DeletePictureAsync(int pictureId, bool deleteLocalFile = false);
 }

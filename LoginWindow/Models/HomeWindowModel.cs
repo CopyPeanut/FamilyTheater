@@ -20,10 +20,31 @@ namespace LoginWindow.Models
         [Reactive]
         public bool IsSelected { get; set; }
 
+        [Reactive]
+        public bool IsBatchSelected { get; set; }
+
         public TagViewModel(string name)
         {
             Name = name;
         }
+    }
+
+    public class BatchContentSelection
+    {
+        public string Category { get; init; } = string.Empty;
+
+        public int Id { get; init; }
+
+        public string Title { get; init; } = string.Empty;
+
+        public string FilePath { get; init; } = string.Empty;
+    }
+
+    public class BatchContentDeleteResult
+    {
+        public List<BatchContentSelection> Deleted { get; } = new();
+
+        public List<string> Failures { get; } = new();
     }
 
     public class HomeWindowModel : ReactiveObject
@@ -40,6 +61,10 @@ namespace LoginWindow.Models
         private readonly Func<UserPermissionsWindow> _userPermissionsWindowFactory;
         private readonly Func<ChangePasswordWindow> _changePasswordWindowFactory;
         private readonly Dictionary<string, ICategoryHandler> _categoryHandlers;
+        private readonly Dictionary<int, BatchContentSelection> _batchSelectedMovies = new();
+        private readonly Dictionary<int, BatchContentSelection> _batchSelectedPictures = new();
+        private readonly Dictionary<int, BatchContentSelection> _batchSelectedGames = new();
+        private readonly Dictionary<int, BatchContentSelection> _batchSelectedMangas = new();
         private ConfigWindow? _configWindow;
         private bool _isClosingDetachedWindows;
 
@@ -57,6 +82,8 @@ namespace LoginWindow.Models
         [Reactive] public string SearchText { get; set; } = string.Empty;
         [Reactive] public string ActiveCategory { get; set; } = "movie";
         [Reactive] public int PageSize { get; private set; } = DefaultPageSize;
+        [Reactive] public bool IsBatchDeleteMode { get; private set; }
+        [Reactive] public int BatchSelectionVersion { get; private set; }
         public bool IsAdmin => _currentUserSession.IsAdmin;
         public string CurrentUserText => string.IsNullOrEmpty(_currentUserSession.Username)
             ? string.Empty
@@ -202,6 +229,12 @@ namespace LoginWindow.Models
             });
             ToggleTagCmd = ReactiveCommand.Create<string>(tagName =>
             {
+                if (IsBatchDeleteMode)
+                {
+                    ToggleBatchTag(tagName);
+                    return;
+                }
+
                 var tag = Tags.FirstOrDefault(item => item.Name == tagName);
                 if (tag == null)
                 {
@@ -378,6 +411,164 @@ namespace LoginWindow.Models
             await RefreshActiveCategoryAsync();
         }
 
+        public async Task DeleteActiveTagsAsync(IEnumerable<string> tagNames, bool excludeFromScan = false)
+        {
+            foreach (var name in tagNames
+                         .Select(tagName => tagName.Trim())
+                         .Where(tagName => !string.IsNullOrEmpty(tagName))
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (ActiveCategory.Equals("movie", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _movieService.DeleteTagAsync(name, excludeFromScan);
+                }
+                else if (ActiveCategory.Equals("picture", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _pictureService.DeleteTagAsync(name, excludeFromScan);
+                }
+                else if (ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _gameService.DeleteTagAsync(name, excludeFromScan);
+                }
+                else if (ActiveCategory.Equals("manga", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _mangaService.DeleteTagAsync(name, excludeFromScan);
+                }
+            }
+
+            await RefreshActiveCategoryAsync();
+        }
+
+        public void EnterBatchDeleteMode()
+        {
+            ClearBatchSelections();
+            IsBatchDeleteMode = true;
+        }
+
+        public void ExitBatchDeleteMode()
+        {
+            IsBatchDeleteMode = false;
+            ClearBatchSelections();
+        }
+
+        public void ToggleBatchTag(string tagName)
+        {
+            var tag = Tags.FirstOrDefault(item => item.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+            if (tag == null)
+            {
+                return;
+            }
+
+            tag.IsBatchSelected = !tag.IsBatchSelected;
+        }
+
+        public IReadOnlyList<string> GetBatchSelectedTagNames()
+        {
+            return Tags
+                .Where(tag => tag.IsBatchSelected)
+                .Select(tag => tag.Name)
+                .ToList();
+        }
+
+        public void ToggleBatchMovie(Movie movie)
+        {
+            ToggleBatchContent(_batchSelectedMovies, new BatchContentSelection
+            {
+                Category = "movie",
+                Id = movie.Id,
+                Title = movie.Title,
+                FilePath = movie.VideoFilePath
+            });
+        }
+
+        public void ToggleBatchPicture(Picture picture)
+        {
+            ToggleBatchContent(_batchSelectedPictures, new BatchContentSelection
+            {
+                Category = "picture",
+                Id = picture.Id,
+                Title = picture.FileName,
+                FilePath = picture.FilePath
+            });
+        }
+
+        public void ToggleBatchGame(Game game)
+        {
+            ToggleBatchContent(_batchSelectedGames, new BatchContentSelection
+            {
+                Category = "game",
+                Id = game.Id,
+                Title = game.Title,
+                FilePath = game.FolderPath
+            });
+        }
+
+        public void ToggleBatchManga(Manga manga)
+        {
+            ToggleBatchContent(_batchSelectedMangas, new BatchContentSelection
+            {
+                Category = "manga",
+                Id = manga.Id,
+                Title = manga.Title,
+                FilePath = manga.FilePath
+            });
+        }
+
+        public bool IsBatchContentSelected(string category, int id)
+        {
+            return GetBatchContentSelectionMap(category).ContainsKey(id);
+        }
+
+        public IReadOnlyList<BatchContentSelection> GetBatchSelectedContents()
+        {
+            return ActiveCategory.Equals("movie", StringComparison.OrdinalIgnoreCase)
+                ? _batchSelectedMovies.Values.ToList()
+                : ActiveCategory.Equals("picture", StringComparison.OrdinalIgnoreCase)
+                    ? _batchSelectedPictures.Values.ToList()
+                    : ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase)
+                        ? _batchSelectedGames.Values.ToList()
+                        : ActiveCategory.Equals("manga", StringComparison.OrdinalIgnoreCase)
+                            ? _batchSelectedMangas.Values.ToList()
+                            : new List<BatchContentSelection>();
+        }
+
+        public async Task<BatchContentDeleteResult> DeleteBatchSelectedContentsAsync()
+        {
+            var result = new BatchContentDeleteResult();
+            foreach (var item in GetBatchSelectedContents())
+            {
+                try
+                {
+                    if (item.Category.Equals("movie", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _movieService.DeleteMovieAsync(item.Id, deleteLocalFile: true);
+                    }
+                    else if (item.Category.Equals("picture", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _pictureService.DeletePictureAsync(item.Id, deleteLocalFile: true);
+                    }
+                    else if (item.Category.Equals("manga", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _mangaService.DeleteMangaAsync(item.Id, deleteLocalFile: true);
+                    }
+                    else
+                    {
+                        result.Failures.Add($"{item.Title}：当前分类不支持删除本地内容。");
+                        continue;
+                    }
+
+                    result.Deleted.Add(item);
+                }
+                catch (Exception ex)
+                {
+                    result.Failures.Add($"{item.Title}\n{item.FilePath}\n{ex.Message}");
+                }
+            }
+
+            await RefreshActiveCategoryAsync();
+            return result;
+        }
+
         public void UpdatePageSize(int pageSize)
         {
             var normalizedPageSize = Math.Max(1, pageSize);
@@ -394,6 +585,8 @@ namespace LoginWindow.Models
 
         private async Task LoadCategoryAsync(string category)
         {
+            IsBatchDeleteMode = false;
+            ClearBatchSelections();
             ActiveCategory = category;
             ResetFilters();
 
@@ -454,6 +647,43 @@ namespace LoginWindow.Models
             {
                 tag.IsSelected = false;
             }
+        }
+
+        private void ToggleBatchContent(Dictionary<int, BatchContentSelection> selectedItems, BatchContentSelection item)
+        {
+            if (!selectedItems.Remove(item.Id))
+            {
+                selectedItems[item.Id] = item;
+            }
+
+            BatchSelectionVersion++;
+        }
+
+        private Dictionary<int, BatchContentSelection> GetBatchContentSelectionMap(string category)
+        {
+            return category.Equals("movie", StringComparison.OrdinalIgnoreCase)
+                ? _batchSelectedMovies
+                : category.Equals("picture", StringComparison.OrdinalIgnoreCase)
+                    ? _batchSelectedPictures
+                    : category.Equals("game", StringComparison.OrdinalIgnoreCase)
+                        ? _batchSelectedGames
+                        : category.Equals("manga", StringComparison.OrdinalIgnoreCase)
+                            ? _batchSelectedMangas
+                            : new Dictionary<int, BatchContentSelection>();
+        }
+
+        private void ClearBatchSelections()
+        {
+            foreach (var tag in Tags)
+            {
+                tag.IsBatchSelected = false;
+            }
+
+            _batchSelectedMovies.Clear();
+            _batchSelectedPictures.Clear();
+            _batchSelectedGames.Clear();
+            _batchSelectedMangas.Clear();
+            BatchSelectionVersion++;
         }
 
         private void ReplaceTags(IEnumerable<string> tagNames, IReadOnlySet<string>? selectedTagNames = null)

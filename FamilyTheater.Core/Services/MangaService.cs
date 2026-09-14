@@ -340,7 +340,7 @@ public class MangaService : IMangaService
         _logger.Info($"Manga tag deleted. Tag={name}, Count={links.Count}");
     }
 
-    public async Task DeleteMangaAsync(int mangaId)
+    public async Task DeleteMangaAsync(int mangaId, bool deleteLocalFile = false)
     {
         using var db = _dbContextFactory.CreateDbContext();
         var manga = await db.Mangas
@@ -350,6 +350,12 @@ public class MangaService : IMangaService
         {
             _logger.Warn($"Delete manga skipped: record not found. MangaId={mangaId}");
             return;
+        }
+
+        var filePath = manga.FilePath;
+        if (deleteLocalFile && !string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+        {
+            File.Delete(filePath);
         }
 
         db.MangaTags.RemoveRange(manga.MangaTags);

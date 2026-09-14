@@ -13,6 +13,7 @@
         <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <local:ActiveCategoryToVisibilityConverter x:Key="CategoryToVisibility"/>
         <local:StringToImageConverter x:Key="StringToImage"/>
+        <local:BatchContentSelectionToBrushConverter x:Key="BatchContentSelectionToBrush"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Style x:Key="TransparentTopMenuItemStyle" TargetType="MenuItem">
             <Setter Property="Background" Value="Transparent"/>
@@ -310,17 +311,20 @@
                     CommandParameter="{Binding Name}"
                     MouseRightButtonUp="TagButton_RightClick"
                     Margin="0,0,8,8" Padding="12,4" FontSize="13"
-                    Cursor="Hand" BorderThickness="0">
+                    Cursor="Hand" BorderThickness="1">
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="Background" Value="#333333"/>
                                                 <Setter Property="Foreground" Value="#AAAAAA"/>
+                                                <Setter Property="BorderBrush" Value="Transparent"/>
                                                 <Setter Property="Template">
                                                     <Setter.Value>
                                                         <!-- 核心：重写控件模板，使用 Border 实现圆角 -->
                                                         <ControlTemplate TargetType="Button">
                                                             <Border x:Name="border" 
                                             Background="{TemplateBinding Background}" 
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
                                             CornerRadius="5" 
                                             Padding="{TemplateBinding Padding}">
                                                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -333,6 +337,11 @@
                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                         <Setter Property="Background" Value="White"/>
                                                         <Setter Property="Foreground" Value="Black"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsBatchSelected}" Value="True">
+                                                        <Setter Property="Background" Value="#4A2C22"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                        <Setter Property="BorderBrush" Value="#FF5A5F"/>
                                                     </DataTrigger>
                                                     <!-- 可选：增加鼠标悬停时的透明度变化，提升交互体验 -->
                                                     <Trigger Property="IsMouseOver" Value="True">
@@ -363,9 +372,18 @@
                       <ItemsControl.ItemTemplate>
                           <DataTemplate>
                               <Border Width="180" Height="280" Margin="8" Background="#2A2A28"
+                                      BorderThickness="3"
                                       CornerRadius="8" ClipToBounds="True"
                                       MouseLeftButtonDown="MovieCard_Click"
                                         MouseRightButtonDown="MovieCard_RightClick">
+                                  <Border.BorderBrush>
+                                      <MultiBinding Converter="{StaticResource BatchContentSelectionToBrush}" ConverterParameter="movie">
+                                          <Binding Path="Id"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.BatchSelectionVersion"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.IsBatchDeleteMode"/>
+                                      </MultiBinding>
+                                  </Border.BorderBrush>
                                   <StackPanel>
                                       <!-- 海报图片（PosterPath 非空时显示） -->
                                       <Image Source="{Binding PosterPath}"
@@ -423,9 +441,18 @@
                       <ItemsControl.ItemTemplate>
                           <DataTemplate>
                               <Border Width="200" Height="200" Margin="8" Background="#2A2A28"
+                                      BorderThickness="3"
                                       CornerRadius="8" ClipToBounds="True"
                                       MouseLeftButtonDown="PictureCard_Click"
                                       MouseRightButtonDown="PictureCard_RightClick">
+                                  <Border.BorderBrush>
+                                      <MultiBinding Converter="{StaticResource BatchContentSelectionToBrush}" ConverterParameter="picture">
+                                          <Binding Path="Id"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.BatchSelectionVersion"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.IsBatchDeleteMode"/>
+                                      </MultiBinding>
+                                  </Border.BorderBrush>
                                   <Image Source="{Binding FilePath, Converter={StaticResource StringToImage}}"
                                          Stretch="UniformToFill"
                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -448,9 +475,18 @@
                       <ItemsControl.ItemTemplate>
                           <DataTemplate>
                               <Border Width="180" Height="280" Margin="8" Background="#2A2A28"
+                                      BorderThickness="3"
                                       CornerRadius="8" ClipToBounds="True" Cursor="Hand"
                                       MouseLeftButtonDown="MangaCard_Click"
                                       MouseRightButtonDown="MangaCard_RightClick">
+                                  <Border.BorderBrush>
+                                      <MultiBinding Converter="{StaticResource BatchContentSelectionToBrush}" ConverterParameter="manga">
+                                          <Binding Path="Id"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.BatchSelectionVersion"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.IsBatchDeleteMode"/>
+                                      </MultiBinding>
+                                  </Border.BorderBrush>
                                   <StackPanel>
                                       <Grid Width="180" Height="240" Background="#3A3A38">
                                           <Image Source="{Binding PosterPath, Converter={StaticResource StringToImage}}"
@@ -502,9 +538,18 @@
                       <ItemsControl.ItemTemplate>
                           <DataTemplate>
                               <Border Width="180" Height="280" Margin="10" Background="#2A2A28"
+                                      BorderThickness="3"
                                       CornerRadius="8" ClipToBounds="True" Cursor="Hand"
                                       MouseLeftButtonDown="GameCard_Click"
                                       MouseRightButtonDown="GameCard_RightClick">
+                                  <Border.BorderBrush>
+                                      <MultiBinding Converter="{StaticResource BatchContentSelectionToBrush}" ConverterParameter="game">
+                                          <Binding Path="Id"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.BatchSelectionVersion"/>
+                                          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.IsBatchDeleteMode"/>
+                                      </MultiBinding>
+                                  </Border.BorderBrush>
                                   <StackPanel>
                                       <Grid Width="180" Height="240" Background="#1A1A19">
                                           <Image Source="{Binding PosterPath, Converter={StaticResource StringToImage}}"
@@ -540,6 +585,29 @@
             <!-- 分页控件区域 -->
             <Border Grid.Row="3" Background="#f1b054" CornerRadius="10,10,0,0" Padding="15,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+
+                    <Button Click="BatchDeleteButton_Click"
+                            Width="70"
+                            Height="32"
+                            FontSize="13"
+                            Foreground="White"
+                            Background="#333333"
+                            BorderBrush="#555555"
+                            BorderThickness="1"
+                            ToolTip="批量删除"
+                            Margin="0,0,10,0"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Content" Value="批量删除"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBatchDeleteMode}" Value="True">
+                                        <Setter Property="Content" Value="确认删除"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
 
                     <!-- 首页按钮 -->
                     <Button Content="⏮" Command="{Binding FirstPageCmd}"

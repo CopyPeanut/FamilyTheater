@@ -330,7 +330,7 @@ public class PictureService : IPictureService
         _logger.Info($"图片标签已删除：Tag={name}, Count={links.Count}");
     }
 
-    public async Task DeletePictureAsync(int pictureId)
+    public async Task DeletePictureAsync(int pictureId, bool deleteLocalFile = false)
     {
         using var db = _dbContextFactory.CreateDbContext();
         var picture = await db.Pictures
@@ -340,6 +340,12 @@ public class PictureService : IPictureService
         {
             _logger.Warn($"删除图片记录跳过：记录不存在。PictureId={pictureId}");
             return;
+        }
+
+        var filePath = picture.FilePath;
+        if (deleteLocalFile && !string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+        {
+            File.Delete(filePath);
         }
 
         db.PictureTags.RemoveRange(picture.PictureTags);

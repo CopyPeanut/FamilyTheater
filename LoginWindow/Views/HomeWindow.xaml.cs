@@ -6,7 +6,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reactive.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -162,10 +164,92 @@ namespace LoginWindow.Views
             Close();
         }
 
+        private async void BatchDeleteButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_viewModel.IsBatchDeleteMode)
+            {
+                _viewModel.EnterBatchDeleteMode();
+                return;
+            }
+
+            var selectedTags = _viewModel.GetBatchSelectedTagNames();
+            var selectedContents = _viewModel.GetBatchSelectedContents();
+            if (selectedTags.Count == 0 && selectedContents.Count == 0)
+            {
+                CustomMessageBox.Show("未选择要删除的标签或内容。");
+                _viewModel.ExitBatchDeleteMode();
+                return;
+            }
+
+            if (selectedTags.Count > 0 &&
+                CustomMessageBox.ShowDialog($"是否删除以下标签？\n\n{FormatTagPreview(selectedTags)}"))
+            {
+                var excludeFromScan = CustomMessageBox.ShowDialog(
+                    $"是否将以下标签加入扫盘排除表？\n\n{FormatTagPreview(selectedTags)}\n\n加入后，当前分类以后扫盘时不会再自动生成这些标签。");
+                await _viewModel.DeleteActiveTagsAsync(selectedTags, excludeFromScan);
+            }
+
+            selectedContents = _viewModel.GetBatchSelectedContents();
+            if (selectedContents.Count > 0)
+            {
+                if (_viewModel.ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase))
+                {
+                    CustomMessageBox.Show($"游戏不支持批量删除本地内容，以下项目会跳过：\n\n{FormatContentPreview(selectedContents)}");
+                }
+                else if (CustomMessageBox.ShowDialog(
+                             $"将删除以下本地文件，封面文件不会删除。是否继续？\n\n{FormatContentPreview(selectedContents)}"))
+                {
+                    var result = await _viewModel.DeleteBatchSelectedContentsAsync();
+                    if (result.Failures.Count > 0)
+                    {
+                        CustomMessageBox.Show(
+                            $"部分内容删除失败：\n\n{FormatLines(result.Failures)}",
+                            FamilyTheater.Core.Enum.LogLevel.WARN);
+                    }
+                }
+            }
+
+            _viewModel.ExitBatchDeleteMode();
+        }
+
+        private static string FormatTagPreview(IEnumerable<string> tagNames)
+        {
+            return FormatLines(tagNames.Select(tagName => $"• {tagName}"));
+        }
+
+        private static string FormatContentPreview(IEnumerable<BatchContentSelection> items)
+        {
+            return FormatLines(items.Select(item => $"• {item.Title}\n  {item.FilePath}"));
+        }
+
+        private static string FormatLines(IEnumerable<string> lines)
+        {
+            var lineList = lines.ToList();
+            var preview = new StringBuilder();
+            foreach (var line in lineList.Take(80))
+            {
+                preview.AppendLine(line);
+            }
+
+            if (lineList.Count > 80)
+            {
+                preview.AppendLine($"... 另有 {lineList.Count - 80} 项");
+            }
+
+            return preview.ToString().TrimEnd();
+        }
+
         private async void MovieCard_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is not FrameworkElement { DataContext: Movie movie })
             {
+                return;
+            }
+
+            if (_viewModel.IsBatchDeleteMode)
+            {
+                _viewModel.ToggleBatchMovie(movie);
+                e.Handled = true;
                 return;
             }
 
@@ -216,6 +300,13 @@ namespace LoginWindow.Views
         {
             if (sender is not FrameworkElement { DataContext: Picture picture })
             {
+                return;
+            }
+
+            if (_viewModel.IsBatchDeleteMode)
+            {
+                _viewModel.ToggleBatchPicture(picture);
+                e.Handled = true;
                 return;
             }
 
@@ -289,6 +380,13 @@ namespace LoginWindow.Views
                 return;
             }
 
+            if (_viewModel.IsBatchDeleteMode)
+            {
+                _viewModel.ToggleBatchManga(manga);
+                e.Handled = true;
+                return;
+            }
+
             if (string.IsNullOrEmpty(manga.FilePath) || !File.Exists(manga.FilePath))
             {
                 _logger.Warn($"Open manga failed: PDF file does not exist. MangaId={manga.Id}, FilePath={manga.FilePath}");
@@ -337,6 +435,13 @@ namespace LoginWindow.Views
         {
             if (sender is not FrameworkElement { DataContext: Game game })
             {
+                return;
+            }
+
+            if (_viewModel.IsBatchDeleteMode)
+            {
+                _viewModel.ToggleBatchGame(game);
+                e.Handled = true;
                 return;
             }
 

@@ -52,7 +52,7 @@ public interface IMovieService
     /// <summary>
     /// 删除电影记录及其所有标签关联（MovieTag），不删除 Tag 记录本身。
     /// </summary>
-    Task DeleteMovieAsync(int movieId);
+    Task DeleteMovieAsync(int movieId, bool deleteLocalFile = false);
 }
 
 /// <summary>

@@ -389,7 +389,7 @@ public class MovieService : IMovieService
         _logger.Info($"电影标签已删除：Tag={name}, Count={links.Count}");
     }
 
-    public async Task DeleteMovieAsync(int movieId)
+    public async Task DeleteMovieAsync(int movieId, bool deleteLocalFile = false)
     {
         using var db = _dbContextFactory.CreateDbContext();
         var movie = await db.Movies
@@ -399,6 +399,12 @@ public class MovieService : IMovieService
         {
             _logger.Warn($"删除电影记录跳过：记录不存在。MovieId={movieId}");
             return;
+        }
+
+        var videoFilePath = movie.VideoFilePath;
+        if (deleteLocalFile && !string.IsNullOrWhiteSpace(videoFilePath) && File.Exists(videoFilePath))
+        {
+            File.Delete(videoFilePath);
         }
 
         db.MovieTags.RemoveRange(movie.MovieTags);
