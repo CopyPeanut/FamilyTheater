@@ -276,7 +276,10 @@ namespace LoginWindow.Views
                 return;
             }
 
-            await _viewModel.DeleteActiveTagAsync(tagViewModel.Name);
+            var excludeFromScan = CustomMessageBox.ShowDialog(
+                $"是否将标签加入扫盘排除表：{tagViewModel.Name}？\n\n加入后，当前分类以后扫盘时不会再自动生成这个标签。");
+
+            await _viewModel.DeleteActiveTagAsync(tagViewModel.Name, excludeFromScan);
         }
 
         private async void MangaCard_Click(object sender, MouseButtonEventArgs e)

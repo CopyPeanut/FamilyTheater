@@ -48,6 +48,7 @@ public class PictureService : IPictureService
                     .Select(p => p.FilePath)
                     .ToListAsync(),
                 StringComparer.OrdinalIgnoreCase);
+        var excludedTagNames = await TagExclusionHelper.GetExcludedTagNamesAsync(db, MediaCategoryIds.Picture);
 
         var discoveredImages = 0;
         foreach (var imageFile in EnumerateImageFilesRecursive(rootPath, result))
@@ -56,6 +57,7 @@ public class PictureService : IPictureService
 
             var folderPath = Path.GetDirectoryName(imageFile) ?? rootPath;
             var tagName = GetTagName(rootPath, folderPath);
+            var isTagExcluded = TagExclusionHelper.IsExcluded(tagName, excludedTagNames);
             var fileName = Path.GetFileNameWithoutExtension(imageFile);
 
             if (!fullRescan && existingPicturePaths.Contains(imageFile))
@@ -72,7 +74,11 @@ public class PictureService : IPictureService
                 picture.FileSizeBytes = fileSizeBytes;
                 picture.LastScannedAt = DateTime.UtcNow;
 
-                if (!picture.PictureTags.Any(pt => pt.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
+                if (isTagExcluded)
+                {
+                    picture.PictureTags.RemoveAll(pt => pt.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+                }
+                else if (!picture.PictureTags.Any(pt => pt.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
                 {
                     picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = tagName });
                 }
@@ -91,7 +97,10 @@ public class PictureService : IPictureService
                     LastScannedAt = DateTime.UtcNow
                 };
 
-                newPicture.PictureTags.Add(new PictureTag { Picture = newPicture, TagName = tagName });
+                if (!isTagExcluded)
+                {
+                    newPicture.PictureTags.Add(new PictureTag { Picture = newPicture, TagName = tagName });
+                }
 
                 db.Pictures.Add(newPicture);
                 existingPictures[imageFile] = newPicture;
@@ -221,12 +230,15 @@ public class PictureService : IPictureService
     public async Task<List<string>> GetAllTagsAsync()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        return await db.PictureTags
+        var excludedTagNames = await TagExclusionHelper.GetExcludedTagNamesAsync(db, MediaCategoryIds.Picture);
+        var tags = await db.PictureTags
             .Select(pt => pt.TagName)
             .Distinct()
-            .OrderBy(name => name)
             .AsNoTracking()
             .ToListAsync();
+
+        var savedTags = await TagExclusionHelper.GetSavedTagNamesAsync(db, MediaCategoryIds.Picture);
+        return TagExclusionHelper.MergeVisibleTags(tags, savedTags, excludedTagNames);
     }
 
     public async Task<Picture?> GetPictureByIdAsync(int pictureId)
@@ -256,8 +268,14 @@ public class PictureService : IPictureService
             return;
         }
 
+        await TagExclusionHelper.RemoveExcludedTagAsync(db, MediaCategoryIds.Picture, name);
+        await TagExclusionHelper.AddSavedTagAsync(db, MediaCategoryIds.Picture, name);
+
         if (picture.PictureTags.Any(pt => pt.TagName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            await db.SaveChangesAsync();
             return;
+        }
 
         picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = name });
         await db.SaveChangesAsync();
@@ -287,7 +305,7 @@ public class PictureService : IPictureService
         _logger.Info($"图片标签已移除：PictureId={pictureId}，Tag={name}");
     }
 
-    public async Task DeleteTagAsync(string tagName)
+    public async Task DeleteTagAsync(string tagName, bool excludeFromScan = false)
     {
         var name = tagName.Trim();
         if (string.IsNullOrEmpty(name))
@@ -302,6 +320,12 @@ public class PictureService : IPictureService
             .ToListAsync();
 
         db.PictureTags.RemoveRange(links);
+        await TagExclusionHelper.RemoveSavedTagAsync(db, MediaCategoryIds.Picture, name);
+        if (excludeFromScan)
+        {
+            await TagExclusionHelper.AddExcludedTagAsync(db, MediaCategoryIds.Picture, name);
+        }
+
         await db.SaveChangesAsync();
         _logger.Info($"图片标签已删除：Tag={name}, Count={links.Count}");
     }

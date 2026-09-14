@@ -68,6 +68,7 @@ public class MovieService : IMovieService
                 .Select(m => m.VideoFilePath)
                 .ToListAsync())
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var excludedTagNames = await TagExclusionHelper.GetExcludedTagNamesAsync(db, MediaCategoryIds.Movie);
 
         var discoveredVideos = 0;
         foreach (var videoFile in EnumerateVideoFilesRecursive(rootPath, result))
@@ -91,7 +92,9 @@ public class MovieService : IMovieService
                 posterFile = await ExtractPosterFromVideoAsync(videoFile, posterFolder, title);
             }
 
-            var tags = ExtractTagsFromPath(rootPath, folder);
+            var tags = TagExclusionHelper.FilterExcludedTags(
+                ExtractTagsFromPath(rootPath, folder),
+                excludedTagNames);
 
             if (exists && existingMovies.TryGetValue(videoFile, out var movie))
             {
@@ -171,12 +174,15 @@ public class MovieService : IMovieService
     public async Task<List<string>> GetAllTagsAsync()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        return await db.MovieTags
+        var excludedTagNames = await TagExclusionHelper.GetExcludedTagNamesAsync(db, MediaCategoryIds.Movie);
+        var tags = await db.MovieTags
             .Select(mt => mt.TagName)
             .Distinct()
-            .OrderBy(name => name)
             .AsNoTracking()
             .ToListAsync();
+
+        var savedTags = await TagExclusionHelper.GetSavedTagNamesAsync(db, MediaCategoryIds.Movie);
+        return TagExclusionHelper.MergeVisibleTags(tags, savedTags, excludedTagNames);
     }
 
     public async Task<Movie?> GetMovieByIdAsync(int movieId)
@@ -321,8 +327,14 @@ public class MovieService : IMovieService
             return;
         }
 
+        await TagExclusionHelper.RemoveExcludedTagAsync(db, MediaCategoryIds.Movie, name);
+        await TagExclusionHelper.AddSavedTagAsync(db, MediaCategoryIds.Movie, name);
+
         if (movie.MovieTags.Any(mt => mt.TagName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            await db.SaveChangesAsync();
             return;
+        }
 
         movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = name });
         await db.SaveChangesAsync();
@@ -352,7 +364,7 @@ public class MovieService : IMovieService
         _logger.Info($"电影标签已移除：MovieId={movieId}，Tag={name}");
     }
 
-    public async Task DeleteTagAsync(string tagName)
+    public async Task DeleteTagAsync(string tagName, bool excludeFromScan = false)
     {
         var name = tagName.Trim();
         if (string.IsNullOrEmpty(name))
@@ -367,6 +379,12 @@ public class MovieService : IMovieService
             .ToListAsync();
 
         db.MovieTags.RemoveRange(links);
+        await TagExclusionHelper.RemoveSavedTagAsync(db, MediaCategoryIds.Movie, name);
+        if (excludeFromScan)
+        {
+            await TagExclusionHelper.AddExcludedTagAsync(db, MediaCategoryIds.Movie, name);
+        }
+
         await db.SaveChangesAsync();
         _logger.Info($"电影标签已删除：Tag={name}, Count={links.Count}");
     }

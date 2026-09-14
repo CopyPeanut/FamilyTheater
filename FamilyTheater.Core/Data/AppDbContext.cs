@@ -19,6 +19,8 @@ namespace FamilyTheater.Core.Data
         public DbSet<GameTag> GameTags { get; set; } = null!;
         public DbSet<Manga> Mangas { get; set; } = null!;
         public DbSet<MangaTag> MangaTags { get; set; } = null!;
+        public DbSet<ExcludedTag> ExcludedTags { get; set; } = null!;
+        public DbSet<SavedTag> SavedTags { get; set; } = null!;
 
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options)
@@ -101,6 +103,16 @@ namespace FamilyTheater.Core.Data
                       .WithMany(m => m.MangaTags)
                       .HasForeignKey(mt => mt.MangaId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ExcludedTag>(entity =>
+            {
+                entity.HasIndex(tag => new { tag.Category, tag.NormalizedTagName }).IsUnique();
+            });
+
+            modelBuilder.Entity<SavedTag>(entity =>
+            {
+                entity.HasIndex(tag => new { tag.Category, tag.NormalizedTagName }).IsUnique();
             });
         }
     }

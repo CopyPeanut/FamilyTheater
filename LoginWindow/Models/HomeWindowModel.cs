@@ -350,7 +350,7 @@ namespace LoginWindow.Models
             ClearCategoryPresentation();
         }
 
-        public async Task DeleteActiveTagAsync(string tagName)
+        public async Task DeleteActiveTagAsync(string tagName, bool excludeFromScan = false)
         {
             var name = tagName.Trim();
             if (string.IsNullOrEmpty(name))
@@ -360,19 +360,19 @@ namespace LoginWindow.Models
 
             if (ActiveCategory.Equals("movie", StringComparison.OrdinalIgnoreCase))
             {
-                await _movieService.DeleteTagAsync(name);
+                await _movieService.DeleteTagAsync(name, excludeFromScan);
             }
             else if (ActiveCategory.Equals("picture", StringComparison.OrdinalIgnoreCase))
             {
-                await _pictureService.DeleteTagAsync(name);
+                await _pictureService.DeleteTagAsync(name, excludeFromScan);
             }
             else if (ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase))
             {
-                await _gameService.DeleteTagAsync(name);
+                await _gameService.DeleteTagAsync(name, excludeFromScan);
             }
             else if (ActiveCategory.Equals("manga", StringComparison.OrdinalIgnoreCase))
             {
-                await _mangaService.DeleteTagAsync(name);
+                await _mangaService.DeleteTagAsync(name, excludeFromScan);
             }
 
             await RefreshActiveCategoryAsync();

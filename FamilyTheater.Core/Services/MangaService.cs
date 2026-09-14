@@ -58,6 +58,7 @@ public class MangaService : IMangaService
                     .Select(m => m.FilePath)
                     .ToListAsync(),
                 StringComparer.OrdinalIgnoreCase);
+        var excludedTagNames = await TagExclusionHelper.GetExcludedTagNamesAsync(db, MediaCategoryIds.Manga);
 
         var discoveredFiles = 0;
         foreach (var mangaFile in EnumerateMangaFilesRecursive(rootPath, result))
@@ -79,7 +80,9 @@ public class MangaService : IMangaService
                 posterPath = await ExtractPosterFromPdfAsync(mangaFile, posterFolder, title);
             }
 
-            var tags = ExtractTagsFromPath(rootPath, folder);
+            var tags = TagExclusionHelper.FilterExcludedTags(
+                ExtractTagsFromPath(rootPath, folder),
+                excludedTagNames);
 
             if (existingMangas.TryGetValue(mangaFile, out var manga))
             {
@@ -143,12 +146,15 @@ public class MangaService : IMangaService
     public async Task<List<string>> GetAllTagsAsync()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        return await db.MangaTags
+        var excludedTagNames = await TagExclusionHelper.GetExcludedTagNamesAsync(db, MediaCategoryIds.Manga);
+        var tags = await db.MangaTags
             .Select(mt => mt.TagName)
             .Distinct()
-            .OrderBy(name => name)
             .AsNoTracking()
             .ToListAsync();
+
+        var savedTags = await TagExclusionHelper.GetSavedTagNamesAsync(db, MediaCategoryIds.Manga);
+        return TagExclusionHelper.MergeVisibleTags(tags, savedTags, excludedTagNames);
     }
 
     public async Task<Manga?> GetMangaByIdAsync(int mangaId)
@@ -272,8 +278,12 @@ public class MangaService : IMangaService
             return;
         }
 
+        await TagExclusionHelper.RemoveExcludedTagAsync(db, MediaCategoryIds.Manga, name);
+        await TagExclusionHelper.AddSavedTagAsync(db, MediaCategoryIds.Manga, name);
+
         if (manga.MangaTags.Any(mt => mt.TagName.Equals(name, StringComparison.OrdinalIgnoreCase)))
         {
+            await db.SaveChangesAsync();
             return;
         }
 
@@ -305,7 +315,7 @@ public class MangaService : IMangaService
         _logger.Info($"Manga tag removed. MangaId={mangaId}, Tag={name}");
     }
 
-    public async Task DeleteTagAsync(string tagName)
+    public async Task DeleteTagAsync(string tagName, bool excludeFromScan = false)
     {
         var name = tagName.Trim();
         if (string.IsNullOrEmpty(name))
@@ -320,6 +330,12 @@ public class MangaService : IMangaService
             .ToListAsync();
 
         db.MangaTags.RemoveRange(links);
+        await TagExclusionHelper.RemoveSavedTagAsync(db, MediaCategoryIds.Manga, name);
+        if (excludeFromScan)
+        {
+            await TagExclusionHelper.AddExcludedTagAsync(db, MediaCategoryIds.Manga, name);
+        }
+
         await db.SaveChangesAsync();
         _logger.Info($"Manga tag deleted. Tag={name}, Count={links.Count}");
     }

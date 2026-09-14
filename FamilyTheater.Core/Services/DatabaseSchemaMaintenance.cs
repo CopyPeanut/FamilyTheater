@@ -40,6 +40,16 @@ public static class DatabaseSchemaMaintenance
         db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_MangaTags_MangaId_TagName\" ON \"MangaTags\" (\"MangaId\", \"TagName\");");
     }
 
+    public static void EnsureExcludedTagIndexes(AppDbContext db)
+    {
+        db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_ExcludedTags_Category_NormalizedTagName\" ON \"ExcludedTags\" (\"Category\", \"NormalizedTagName\");");
+    }
+
+    public static void EnsureSavedTagIndexes(AppDbContext db)
+    {
+        db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_SavedTags_Category_NormalizedTagName\" ON \"SavedTags\" (\"Category\", \"NormalizedTagName\");");
+    }
+
     private static void EnsureColumn(AppDbContext db, string tableName, string columnName, string columnDefinition)
     {
         var connection = db.Database.GetDbConnection();

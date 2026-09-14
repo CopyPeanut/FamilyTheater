@@ -67,6 +67,7 @@ public class GameService : IGameService
                     .Select(g => g.FolderPath)
                     .ToListAsync(),
                 StringComparer.OrdinalIgnoreCase);
+        var excludedTagNames = await TagExclusionHelper.GetExcludedTagNamesAsync(db, MediaCategoryIds.Game);
 
         var folders = FindGameFolders(rootPath);
         foreach (var folder in folders)
@@ -82,7 +83,9 @@ public class GameService : IGameService
             if (existingGames.TryGetValue(folder, out var game))
             {
                 var posterPath = ResolvePosterFile(title, posterIndex ??= BuildPosterIndex(posterRootPath));
-                var tags = ExtractTagsFromPath(rootPath, folder);
+                var tags = TagExclusionHelper.FilterExcludedTags(
+                    ExtractTagsFromPath(rootPath, folder),
+                    excludedTagNames);
                 game.Title = string.IsNullOrWhiteSpace(game.Title) ? title : game.Title;
                 game.PosterPath = SelectPosterPath(game.PosterPath, posterPath, posterRootPath);
                 game.FolderSizeBytes = 0;
@@ -93,7 +96,9 @@ public class GameService : IGameService
             else
             {
                 var posterPath = ResolvePosterFile(title, posterIndex ??= BuildPosterIndex(posterRootPath));
-                var tags = ExtractTagsFromPath(rootPath, folder);
+                var tags = TagExclusionHelper.FilterExcludedTags(
+                    ExtractTagsFromPath(rootPath, folder),
+                    excludedTagNames);
                 var newGame = new Game
                 {
                     Title = title,
@@ -137,12 +142,15 @@ public class GameService : IGameService
     public async Task<List<string>> GetAllTagsAsync()
     {
         using var db = _dbContextFactory.CreateDbContext();
-        return await db.GameTags
+        var excludedTagNames = await TagExclusionHelper.GetExcludedTagNamesAsync(db, MediaCategoryIds.Game);
+        var tags = await db.GameTags
             .Select(gt => gt.TagName)
             .Distinct()
-            .OrderBy(name => name)
             .AsNoTracking()
             .ToListAsync();
+
+        var savedTags = await TagExclusionHelper.GetSavedTagNamesAsync(db, MediaCategoryIds.Game);
+        return TagExclusionHelper.MergeVisibleTags(tags, savedTags, excludedTagNames);
     }
 
     public async Task<Game?> GetGameByIdAsync(int gameId)
@@ -225,8 +233,12 @@ public class GameService : IGameService
             return;
         }
 
+        await TagExclusionHelper.RemoveExcludedTagAsync(db, MediaCategoryIds.Game, name);
+        await TagExclusionHelper.AddSavedTagAsync(db, MediaCategoryIds.Game, name);
+
         if (game.GameTags.Any(gt => gt.TagName.Equals(name, StringComparison.OrdinalIgnoreCase)))
         {
+            await db.SaveChangesAsync();
             return;
         }
 
@@ -258,7 +270,7 @@ public class GameService : IGameService
         _logger.Info($"游戏标签已移除：GameId={gameId}，Tag={name}");
     }
 
-    public async Task DeleteTagAsync(string tagName)
+    public async Task DeleteTagAsync(string tagName, bool excludeFromScan = false)
     {
         var name = tagName.Trim();
         if (string.IsNullOrEmpty(name))
@@ -273,6 +285,12 @@ public class GameService : IGameService
             .ToListAsync();
 
         db.GameTags.RemoveRange(links);
+        await TagExclusionHelper.RemoveSavedTagAsync(db, MediaCategoryIds.Game, name);
+        if (excludeFromScan)
+        {
+            await TagExclusionHelper.AddExcludedTagAsync(db, MediaCategoryIds.Game, name);
+        }
+
         await db.SaveChangesAsync();
         _logger.Info($"游戏标签已删除：Tag={name}, Count={links.Count}");
     }

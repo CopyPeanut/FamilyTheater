@@ -56,6 +56,9 @@ public class LibraryDbContextFactory : ILibraryDbContextFactory
             DatabaseSchemaMaintenance.EnsureCoreTables(db);
             DatabaseSchemaMaintenance.EnsureMovieFileIndexes(db);
             DatabaseSchemaMaintenance.EnsureGameIndexes(db);
+            DatabaseSchemaMaintenance.EnsureMangaIndexes(db);
+            DatabaseSchemaMaintenance.EnsureExcludedTagIndexes(db);
+            DatabaseSchemaMaintenance.EnsureSavedTagIndexes(db);
             _initializedDbPaths.Add(dbPath);
         }
     }

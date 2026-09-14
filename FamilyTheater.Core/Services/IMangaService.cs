@@ -20,7 +20,7 @@ public interface IMangaService
 
     Task RemoveTagFromMangaAsync(int mangaId, string tagName);
 
-    Task DeleteTagAsync(string tagName);
+    Task DeleteTagAsync(string tagName, bool excludeFromScan = false);
 
     Task DeleteMangaAsync(int mangaId);
 }

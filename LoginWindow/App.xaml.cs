@@ -112,6 +112,8 @@ public partial class App : System.Windows.Application
                 DatabaseSchemaMaintenance.EnsureMovieFileIndexes(db);
                 DatabaseSchemaMaintenance.EnsureGameIndexes(db);
                 DatabaseSchemaMaintenance.EnsureMangaIndexes(db);
+                DatabaseSchemaMaintenance.EnsureExcludedTagIndexes(db);
+                DatabaseSchemaMaintenance.EnsureSavedTagIndexes(db);
 
                 if (db.Users.Any() && !db.Users.Any(user => user.Role == UserRoles.Admin))
                 {

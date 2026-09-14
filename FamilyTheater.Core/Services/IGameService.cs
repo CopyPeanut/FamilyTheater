@@ -20,7 +20,7 @@ public interface IGameService
 
     Task RemoveTagFromGameAsync(int gameId, string tagName);
 
-    Task DeleteTagAsync(string tagName);
+    Task DeleteTagAsync(string tagName, bool excludeFromScan = false);
 
     Task DeleteGameAsync(int gameId);
 

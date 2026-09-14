@@ -33,7 +33,7 @@ public interface IPictureService
     /// </summary>
     Task RemoveTagFromPictureAsync(int pictureId, string tagName);
 
-    Task DeleteTagAsync(string tagName);
+    Task DeleteTagAsync(string tagName, bool excludeFromScan = false);
 
     /// <summary>
     /// 获取单个图片（含标签），用于详情弹窗。
