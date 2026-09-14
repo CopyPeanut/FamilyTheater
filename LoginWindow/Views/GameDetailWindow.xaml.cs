@@ -3,6 +3,7 @@ using FamilyTheater.Core.Logger;
 using FamilyTheater.Core.Services;
 using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -21,6 +22,7 @@ namespace LoginWindow.Views
         private readonly IGameService _gameService;
         private readonly IAppLogger _logger;
         private readonly ObservableCollection<DetailTagViewModel> _allTags = new();
+        private readonly List<DetailTagViewModel> _allAvailableTags = new();
         private readonly ObservableCollection<string> _gameTags = new();
         private readonly ObservableCollection<string> _screenshots = new();
 
@@ -66,14 +68,16 @@ namespace LoginWindow.Views
                 }
             }
 
-            _allTags.Clear();
+            _allAvailableTags.Clear();
             foreach (var name in tags)
             {
-                _allTags.Add(new DetailTagViewModel(name)
+                _allAvailableTags.Add(new DetailTagViewModel(name)
                 {
                     IsSelected = _gameTags.Any(t => t.Equals(name, StringComparison.OrdinalIgnoreCase))
                 });
             }
+
+            ApplyTagFilter();
         }
 
         private void LoadPoster(string? posterPath)
@@ -360,12 +364,17 @@ namespace LoginWindow.Views
             await _gameService.RemoveTagFromGameAsync(_game.Id, tagName);
             _gameTags.Remove(tagName);
 
-            var tagViewModel = _allTags.FirstOrDefault(t =>
+            var tagViewModel = _allAvailableTags.FirstOrDefault(t =>
                 t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
             if (tagViewModel != null)
             {
                 tagViewModel.IsSelected = false;
             }
+        }
+
+        private void NewTagInput_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            ApplyTagFilter();
         }
 
         private void NewTagInput_KeyDown(object sender, KeyEventArgs e)
@@ -392,11 +401,11 @@ namespace LoginWindow.Views
                 _gameTags.Add(name);
             }
 
-            var existing = _allTags.FirstOrDefault(t =>
+            var existing = _allAvailableTags.FirstOrDefault(t =>
                 t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             if (existing == null)
             {
-                _allTags.Add(new DetailTagViewModel(name) { IsSelected = true });
+                _allAvailableTags.Add(new DetailTagViewModel(name) { IsSelected = true });
             }
             else
             {
@@ -404,6 +413,23 @@ namespace LoginWindow.Views
             }
 
             NewTagInput.Text = string.Empty;
+            ApplyTagFilter();
+        }
+
+        private void ApplyTagFilter()
+        {
+            var keyword = NewTagInput.Text.Trim();
+            var filteredTags = string.IsNullOrEmpty(keyword)
+                ? _allAvailableTags
+                : _allAvailableTags
+                    .Where(tag => tag.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+            _allTags.Clear();
+            foreach (var tag in filteredTags)
+            {
+                _allTags.Add(tag);
+            }
         }
 
         protected override void OnKeyDown(KeyEventArgs e)

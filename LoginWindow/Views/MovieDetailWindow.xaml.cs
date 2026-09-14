@@ -3,6 +3,7 @@ using FamilyTheater.Core.Logger;
 using FamilyTheater.Core.Services;
 using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -33,6 +34,7 @@ namespace LoginWindow.Views
         private readonly IMovieService _movieService;
         private readonly IAppLogger _logger;
         private readonly ObservableCollection<DetailTagViewModel> _allTags = new();
+        private readonly List<DetailTagViewModel> _allAvailableTags = new();
         private readonly ObservableCollection<string> _movieTags = new();
 
         public MovieDetailWindow(Movie movie, IMovieService movieService, IAppLogger logger)
@@ -74,15 +76,17 @@ namespace LoginWindow.Views
                 }
             }
 
-            _allTags.Clear();
+            _allAvailableTags.Clear();
             foreach (var name in tags)
             {
                 var viewModel = new DetailTagViewModel(name)
                 {
                     IsSelected = _movieTags.Any(t => t.Equals(name, StringComparison.OrdinalIgnoreCase))
                 };
-                _allTags.Add(viewModel);
+                _allAvailableTags.Add(viewModel);
             }
+
+            ApplyTagFilter();
         }
 
         private async void TitleInput_LostFocus(object sender, RoutedEventArgs e)
@@ -284,12 +288,17 @@ namespace LoginWindow.Views
             await _movieService.RemoveTagFromMovieAsync(_movie.Id, tagName);
             _movieTags.Remove(tagName);
 
-            var tagViewModel = _allTags.FirstOrDefault(t =>
+            var tagViewModel = _allAvailableTags.FirstOrDefault(t =>
                 t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
             if (tagViewModel != null)
             {
                 tagViewModel.IsSelected = false;
             }
+        }
+
+        private void NewTagInput_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            ApplyTagFilter();
         }
 
         private void NewTagInput_KeyDown(object sender, KeyEventArgs e)
@@ -316,11 +325,11 @@ namespace LoginWindow.Views
                 _movieTags.Add(name);
             }
 
-            var existing = _allTags.FirstOrDefault(t =>
+            var existing = _allAvailableTags.FirstOrDefault(t =>
                 t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             if (existing == null)
             {
-                _allTags.Add(new DetailTagViewModel(name) { IsSelected = true });
+                _allAvailableTags.Add(new DetailTagViewModel(name) { IsSelected = true });
             }
             else
             {
@@ -328,6 +337,23 @@ namespace LoginWindow.Views
             }
 
             NewTagInput.Text = string.Empty;
+            ApplyTagFilter();
+        }
+
+        private void ApplyTagFilter()
+        {
+            var keyword = NewTagInput.Text.Trim();
+            var filteredTags = string.IsNullOrEmpty(keyword)
+                ? _allAvailableTags
+                : _allAvailableTags
+                    .Where(tag => tag.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+            _allTags.Clear();
+            foreach (var tag in filteredTags)
+            {
+                _allTags.Add(tag);
+            }
         }
 
         protected override void OnKeyDown(KeyEventArgs e)

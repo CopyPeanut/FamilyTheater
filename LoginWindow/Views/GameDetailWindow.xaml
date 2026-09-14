@@ -158,7 +158,8 @@
                     <TextBox x:Name="NewTagInput" Grid.Column="0" Height="32"
                              Background="#333333" Foreground="White" BorderBrush="#555555"
                              BorderThickness="1" Padding="8,0" VerticalContentAlignment="Center"
-                             FontSize="13" KeyDown="NewTagInput_KeyDown"/>
+                             FontSize="13" KeyDown="NewTagInput_KeyDown"
+                             TextChanged="NewTagInput_TextChanged"/>
                     <Button Grid.Column="1" Content="添加" Click="AddNewTag_Click"
                             Height="32" Margin="8,0,0,0" Padding="16,0"
                             Background="#f1b054" Foreground="#1E1E1D" FontWeight="Bold"
