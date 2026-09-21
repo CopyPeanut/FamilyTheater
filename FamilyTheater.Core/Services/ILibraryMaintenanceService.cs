@@ -3,6 +3,10 @@ namespace FamilyTheater.Core.Services;
 public interface ILibraryMaintenanceService
 {
     Task<ClearLibraryResult> ClearLibraryAsync();
+    Task<ClearLibraryResult> ClearMoviesAsync();
+    Task<ClearLibraryResult> ClearPicturesAsync();
+    Task<ClearLibraryResult> ClearMangasAsync();
+    Task<ClearLibraryResult> ClearGamesAsync();
 }
 
 public class ClearLibraryResult

@@ -35,7 +35,9 @@ namespace LoginWindow.Models
         [Reactive] public string MangaPosterRootPath { get; set; } = string.Empty;
         [Reactive] public string StatusMessage { get; set; } = string.Empty;
         [Reactive] public bool IsScanning { get; set; }
+        [Reactive] public string ActiveConfigPage { get; set; } = "Library";
 
+        public ReactiveCommand<string, Unit> SetConfigPageCommand { get; }
         public ReactiveCommand<string, Unit> BrowseCommand { get; }
         public ReactiveCommand<Unit, Unit> SaveCommand { get; }
         public ReactiveCommand<Unit, Unit> FullMovieScanCommand { get; }
@@ -44,6 +46,10 @@ namespace LoginWindow.Models
         public ReactiveCommand<Unit, Unit> FullGameScanCommand { get; }
         public ReactiveCommand<Unit, Unit> FullAllScanCommand { get; }
         public ReactiveCommand<Unit, Unit> ClearLibraryCommand { get; }
+        public ReactiveCommand<Unit, Unit> ClearMovieLibraryCommand { get; }
+        public ReactiveCommand<Unit, Unit> ClearPictureLibraryCommand { get; }
+        public ReactiveCommand<Unit, Unit> ClearMangaLibraryCommand { get; }
+        public ReactiveCommand<Unit, Unit> ClearGameLibraryCommand { get; }
 
         public ConfigWindowModel(
             ISettingService settingService,
@@ -66,6 +72,7 @@ namespace LoginWindow.Models
 
             var canSave = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning);
             var canClearLibrary = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning && IsAdmin);
+            SetConfigPageCommand = ReactiveCommand.Create<string>(page => ActiveConfigPage = page);
             SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
             FullMovieScanCommand = ReactiveCommand.CreateFromTask(FullMovieScanAsync, canSave);
             FullPictureScanCommand = ReactiveCommand.CreateFromTask(FullPictureScanAsync, canSave);
@@ -73,6 +80,10 @@ namespace LoginWindow.Models
             FullGameScanCommand = ReactiveCommand.CreateFromTask(FullGameScanAsync, canSave);
             FullAllScanCommand = ReactiveCommand.CreateFromTask(FullAllScanAsync, canSave);
             ClearLibraryCommand = ReactiveCommand.CreateFromTask(ClearLibraryAsync, canClearLibrary);
+            ClearMovieLibraryCommand = ReactiveCommand.CreateFromTask(() => ClearLibraryModuleAsync("电影库", _libraryMaintenanceService.ClearMoviesAsync), canClearLibrary);
+            ClearPictureLibraryCommand = ReactiveCommand.CreateFromTask(() => ClearLibraryModuleAsync("图片库", _libraryMaintenanceService.ClearPicturesAsync), canClearLibrary);
+            ClearMangaLibraryCommand = ReactiveCommand.CreateFromTask(() => ClearLibraryModuleAsync("漫画库", _libraryMaintenanceService.ClearMangasAsync), canClearLibrary);
+            ClearGameLibraryCommand = ReactiveCommand.CreateFromTask(() => ClearLibraryModuleAsync("游戏库", _libraryMaintenanceService.ClearGamesAsync), canClearLibrary);
             BrowseCommand = ReactiveCommand.CreateFromTask<string>(BrowseAsync, canSave);
 
             _ = LoadAsync();
@@ -296,6 +307,46 @@ namespace LoginWindow.Models
             {
                 _logger.Error("清空媒体库失败。", ex);
                 StatusMessage = $"清空媒体库失败：{ex.Message}；详细日志：{GetCurrentLogFilePath()}";
+            }
+            finally
+            {
+                IsScanning = false;
+            }
+        }
+
+        private async Task ClearLibraryModuleAsync(string libraryName, Func<Task<ClearLibraryResult>> clearAction)
+        {
+            if (!IsAdmin)
+            {
+                StatusMessage = $"当前账户不是 admin，不能清空{libraryName}。";
+                return;
+            }
+
+            var confirmed = CustomMessageBox.ShowDialog(
+                $"危险操作：这会清空当前{libraryName}数据库内容及其标签记录。\n\n账户不会删除，路径配置不会删除，磁盘上的文件也不会删除。\n\n是否继续？",
+                LogLevel.WARN,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (!confirmed)
+            {
+                return;
+            }
+
+            IsScanning = true;
+            StatusMessage = $"正在清空{libraryName}...";
+
+            try
+            {
+                var result = await Task.Run(clearAction);
+                StatusMessage =
+                    $"{libraryName}已清空：删除 {result.TotalItems} 条内容记录、{result.TotalTags} 条标签记录。" +
+                    "关闭配置窗口后，展示页会按当前数据库重新刷新。";
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"清空{libraryName}失败。", ex);
+                StatusMessage = $"清空{libraryName}失败：{ex.Message}；详细日志：{GetCurrentLogFilePath()}";
             }
             finally
             {
