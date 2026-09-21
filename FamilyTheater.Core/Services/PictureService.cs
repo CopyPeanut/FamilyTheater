@@ -56,8 +56,9 @@ public class PictureService : IPictureService
             discoveredImages++;
 
             var folderPath = Path.GetDirectoryName(imageFile) ?? rootPath;
-            var tagName = GetTagName(rootPath, folderPath);
-            var isTagExcluded = TagExclusionHelper.IsExcluded(tagName, excludedTagNames);
+            var tags = TagExclusionHelper.FilterExcludedTags(
+                ExtractTagsFromPath(rootPath, folderPath),
+                excludedTagNames);
             var fileName = Path.GetFileNameWithoutExtension(imageFile);
 
             if (!fullRescan && existingPicturePaths.Contains(imageFile))
@@ -74,14 +75,7 @@ public class PictureService : IPictureService
                 picture.FileSizeBytes = fileSizeBytes;
                 picture.LastScannedAt = DateTime.UtcNow;
 
-                if (isTagExcluded)
-                {
-                    picture.PictureTags.RemoveAll(pt => pt.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase));
-                }
-                else if (!picture.PictureTags.Any(pt => pt.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = tagName });
-                }
+                SyncTags(picture, tags);
 
                 result.Updated++;
             }
@@ -97,7 +91,7 @@ public class PictureService : IPictureService
                     LastScannedAt = DateTime.UtcNow
                 };
 
-                if (!isTagExcluded)
+                foreach (var tagName in tags)
                 {
                     newPicture.PictureTags.Add(new PictureTag { Picture = newPicture, TagName = tagName });
                 }
@@ -187,17 +181,36 @@ public class PictureService : IPictureService
         }
     }
 
-    private static string GetTagName(string rootPath, string folderPath)
+    private static List<string> ExtractTagsFromPath(string rootPath, string folderPath)
     {
         var normalizedRoot = Path.GetFullPath(rootPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var normalizedFolder = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var relative = normalizedFolder.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase)
+            ? normalizedFolder.Substring(normalizedRoot.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            : Path.GetFileName(folderPath);
 
-        if (string.Equals(normalizedRoot, normalizedFolder, StringComparison.OrdinalIgnoreCase))
+        var parts = relative.Split(
+            new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+            StringSplitOptions.RemoveEmptyEntries);
+
+        return parts.ToList();
+    }
+
+    private static void SyncTags(Picture picture, List<string> tagNames)
+    {
+        var currentTagNames = picture.PictureTags
+            .Select(pt => pt.TagName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var tagName in tagNames)
         {
-            return Path.GetFileName(normalizedRoot) is { Length: > 0 } rootName ? rootName : "图片根目录";
-        }
+            if (currentTagNames.Contains(tagName))
+            {
+                continue;
+            }
 
-        return Path.GetFileName(normalizedFolder) is { Length: > 0 } folderName ? folderName : "图片";
+            picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = tagName });
+        }
     }
 
     private long GetFileSizeBytes(string imageFile)
