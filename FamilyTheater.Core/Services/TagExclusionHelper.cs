@@ -28,7 +28,10 @@ internal static class TagExclusionHelper
     public static List<string> FilterExcludedTags(IEnumerable<string> tagNames, IReadOnlySet<string> excludedTagNames)
     {
         return tagNames
+            .Select(tagName => tagName.Trim())
+            .Where(tagName => !string.IsNullOrEmpty(tagName))
             .Where(tagName => !IsExcluded(tagName, excludedTagNames))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

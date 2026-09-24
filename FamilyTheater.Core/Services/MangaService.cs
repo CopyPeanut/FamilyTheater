@@ -695,6 +695,7 @@ public class MangaService : IMangaService
             }
 
             manga.MangaTags.Add(new MangaTag { Manga = manga, TagName = tagName });
+            currentTagNames.Add(tagName);
         }
     }
 }

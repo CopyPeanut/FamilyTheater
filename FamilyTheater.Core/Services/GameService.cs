@@ -622,6 +622,7 @@ public class GameService : IGameService
             }
 
             game.GameTags.Add(new GameTag { Game = game, TagName = tagName });
+            currentTagNames.Add(tagName);
         }
     }
 

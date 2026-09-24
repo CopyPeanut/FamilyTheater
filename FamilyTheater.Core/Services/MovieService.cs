@@ -916,6 +916,7 @@ public class MovieService : IMovieService
                 continue;
 
             movie.MovieTags.Add(new MovieTag { Movie = movie, TagName = tagName });
+            currentTagNames.Add(tagName);
         }
     }
 }

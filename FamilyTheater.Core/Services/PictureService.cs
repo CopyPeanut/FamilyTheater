@@ -210,6 +210,7 @@ public class PictureService : IPictureService
             }
 
             picture.PictureTags.Add(new PictureTag { Picture = picture, TagName = tagName });
+            currentTagNames.Add(tagName);
         }
     }
 
