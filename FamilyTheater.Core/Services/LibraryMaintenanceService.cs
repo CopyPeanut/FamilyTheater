@@ -29,7 +29,8 @@ public class LibraryMaintenanceService : ILibraryMaintenanceService
                 MovieTags = await db.MovieTags.ExecuteDeleteAsync(),
                 PictureTags = await db.PictureTags.ExecuteDeleteAsync(),
                 MangaTags = await db.MangaTags.ExecuteDeleteAsync(),
-                GameTags = await db.GameTags.ExecuteDeleteAsync()
+                GameTags = await db.GameTags.ExecuteDeleteAsync(),
+                SavedTags = await db.SavedTags.ExecuteDeleteAsync()
             };
 
             result.Movies = await db.Movies.ExecuteDeleteAsync();
@@ -46,6 +47,7 @@ public class LibraryMaintenanceService : ILibraryMaintenanceService
         return await ClearAsync("电影库", async db => new ClearLibraryResult
         {
             MovieTags = await db.MovieTags.ExecuteDeleteAsync(),
+            SavedTags = await db.SavedTags.Where(tag => tag.Category == MediaCategoryIds.Movie).ExecuteDeleteAsync(),
             Movies = await db.Movies.ExecuteDeleteAsync()
         });
     }
@@ -55,6 +57,7 @@ public class LibraryMaintenanceService : ILibraryMaintenanceService
         return await ClearAsync("图片库", async db => new ClearLibraryResult
         {
             PictureTags = await db.PictureTags.ExecuteDeleteAsync(),
+            SavedTags = await db.SavedTags.Where(tag => tag.Category == MediaCategoryIds.Picture).ExecuteDeleteAsync(),
             Pictures = await db.Pictures.ExecuteDeleteAsync()
         });
     }
@@ -64,6 +67,7 @@ public class LibraryMaintenanceService : ILibraryMaintenanceService
         return await ClearAsync("漫画库", async db => new ClearLibraryResult
         {
             MangaTags = await db.MangaTags.ExecuteDeleteAsync(),
+            SavedTags = await db.SavedTags.Where(tag => tag.Category == MediaCategoryIds.Manga).ExecuteDeleteAsync(),
             Mangas = await db.Mangas.ExecuteDeleteAsync()
         });
     }
@@ -73,6 +77,7 @@ public class LibraryMaintenanceService : ILibraryMaintenanceService
         return await ClearAsync("游戏库", async db => new ClearLibraryResult
         {
             GameTags = await db.GameTags.ExecuteDeleteAsync(),
+            SavedTags = await db.SavedTags.Where(tag => tag.Category == MediaCategoryIds.Game).ExecuteDeleteAsync(),
             Games = await db.Games.ExecuteDeleteAsync()
         });
     }
@@ -98,7 +103,8 @@ public class LibraryMaintenanceService : ILibraryMaintenanceService
             $"{libraryName}已清空：Movies={result.Movies}, MovieTags={result.MovieTags}, " +
             $"Pictures={result.Pictures}, PictureTags={result.PictureTags}, " +
             $"Mangas={result.Mangas}, MangaTags={result.MangaTags}, " +
-            $"Games={result.Games}, GameTags={result.GameTags}, Db={_dbContextFactory.CurrentDatabasePath}");
+            $"Games={result.Games}, GameTags={result.GameTags}, SavedTags={result.SavedTags}, " +
+            $"Db={_dbContextFactory.CurrentDatabasePath}");
 
         return result;
     }

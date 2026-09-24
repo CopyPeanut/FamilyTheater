@@ -19,7 +19,8 @@ public class ClearLibraryResult
     public int MangaTags { get; set; }
     public int Games { get; set; }
     public int GameTags { get; set; }
+    public int SavedTags { get; set; }
 
     public int TotalItems => Movies + Pictures + Mangas + Games;
-    public int TotalTags => MovieTags + PictureTags + MangaTags + GameTags;
+    public int TotalTags => MovieTags + PictureTags + MangaTags + GameTags + SavedTags;
 }
