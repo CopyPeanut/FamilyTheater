@@ -11,18 +11,39 @@
         </Grid.RowDefinitions>
 
         <!-- 视频区域 -->
-        <MediaElement x:Name="Player" Grid.Row="0" Stretch="Uniform"
-                      LoadedBehavior="Manual" UnloadedBehavior="Stop"
-                      MediaOpened="Player_MediaOpened"
-                      MediaEnded="Player_MediaEnded"
-                      MediaFailed="Player_MediaFailed"
-                      MouseLeftButtonUp="Player_MouseLeftButtonUp"/>
+        <Grid Grid.Row="0" Background="Black" MouseLeftButtonUp="VideoSurface_MouseLeftButtonUp">
+            <MediaElement x:Name="Player" Stretch="Uniform"
+                          LoadedBehavior="Manual" UnloadedBehavior="Stop"
+                          MediaOpened="Player_MediaOpened"
+                          MediaEnded="Player_MediaEnded"
+                          MediaFailed="Player_MediaFailed"/>
+
+            <Border x:Name="SubtitleContainer"
+                    VerticalAlignment="Bottom"
+                    HorizontalAlignment="Center"
+                    Margin="48,0,48,30"
+                    Padding="14,8"
+                    Background="#99000000"
+                    CornerRadius="6"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False">
+                <TextBlock x:Name="SubtitleText"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           Foreground="White"
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           LineHeight="36"
+                           MaxWidth="1200"/>
+            </Border>
+        </Grid>
 
         <!-- 控制栏 -->
         <Grid Grid.Row="1" Background="#1E1E1D">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
@@ -44,8 +65,14 @@
                        Foreground="#CCCCCC" FontSize="13" Margin="10,0"
                        Text="00:00 / 00:00"/>
 
+            <Button x:Name="LoadSubtitleBtn" Grid.Column="3" Click="LoadSubtitleBtn_Click"
+                    MinWidth="64" Height="32" Margin="4"
+                    Background="Transparent" BorderBrush="#555555" BorderThickness="1"
+                    Foreground="#f1b054" FontSize="13" Cursor="Hand"
+                    Content="字幕"/>
+
             <!-- 关闭按钮 -->
-            <Button Grid.Column="3" Click="CloseBtn_Click"
+            <Button Grid.Column="4" Click="CloseBtn_Click"
                     Width="40" Height="32" Margin="8,4" Background="Transparent"
                     BorderThickness="0" Foreground="#f1b054" FontSize="16"
                     Cursor="Hand" Content="✕"/>

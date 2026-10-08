@@ -39,6 +39,7 @@
 		<PackageReference Include="ReactiveUI" Version="16.4.15" />
 		<PackageReference Include="ReactiveUI.Fody" Version="16.4.15" />
 		<PackageReference Include="ReactiveUI.WPF" Version="16.4.15" />
+		<PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
 	</ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FamilyTheater.Core\FamilyTheater.Core.csproj" />
