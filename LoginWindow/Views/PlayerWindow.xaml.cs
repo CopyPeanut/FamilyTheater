@@ -79,6 +79,17 @@ namespace LoginWindow.Views
 
         private void PlayPauseBtn_Click(object sender, RoutedEventArgs e)
         {
+            TogglePlayPause();
+        }
+
+        private void Player_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            TogglePlayPause();
+            e.Handled = true;
+        }
+
+        private void TogglePlayPause()
+        {
             if (_isPlaying)
             {
                 Player.Pause();

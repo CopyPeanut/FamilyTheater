@@ -15,7 +15,8 @@
                       LoadedBehavior="Manual" UnloadedBehavior="Stop"
                       MediaOpened="Player_MediaOpened"
                       MediaEnded="Player_MediaEnded"
-                      MediaFailed="Player_MediaFailed"/>
+                      MediaFailed="Player_MediaFailed"
+                      MouseLeftButtonUp="Player_MouseLeftButtonUp"/>
 
         <!-- 控制栏 -->
         <Grid Grid.Row="1" Background="#1E1E1D">
