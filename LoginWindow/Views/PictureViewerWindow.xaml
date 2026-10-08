@@ -2,8 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
-        Title="图片预览" Background="#1E1E1D" Width="1800" Height="1000"
-        WindowStyle="SingleBorderWindow" ResizeMode="CanResize">
+        Title="图片预览" Background="#1E1E1D" Width="1200" Height="800" MinWidth="720" MinHeight="420"
+        WindowStyle="SingleBorderWindow" ResizeMode="CanResize" WindowStartupLocation="CenterScreen"
+        SizeChanged="Window_SizeChanged">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -11,9 +12,23 @@
         </Grid.RowDefinitions>
 
         <!-- 图片区域 -->
-        <Grid Grid.Row="0">
-            <ScrollViewer x:Name="ImageScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <Image x:Name="ImageViewer" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <Grid Grid.Row="0" Background="#111110">
+            <ScrollViewer x:Name="ImageScrollViewer"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          PreviewMouseWheel="ImageScrollViewer_PreviewMouseWheel"
+                          PreviewMouseLeftButtonDown="ImageScrollViewer_PreviewMouseLeftButtonDown"
+                          PreviewMouseMove="ImageScrollViewer_PreviewMouseMove"
+                          PreviewMouseLeftButtonUp="ImageScrollViewer_PreviewMouseLeftButtonUp"
+                          LostMouseCapture="ImageScrollViewer_LostMouseCapture"
+                          MouseDoubleClick="ImageScrollViewer_MouseDoubleClick">
+                <Grid x:Name="ImageSurface" Background="#111110">
+                    <Image x:Name="ImageViewer"
+                           Stretch="Fill"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           SnapsToDevicePixels="True"/>
+                </Grid>
             </ScrollViewer>
             <wfi:WindowsFormsHost x:Name="GifHost" Visibility="Collapsed"/>
         </Grid>
@@ -29,11 +44,27 @@
             <TextBlock x:Name="FileNameDisplay" Grid.Column="0" VerticalAlignment="Center"
                        Foreground="#CCCCCC" FontSize="13" Margin="15,0" TextTrimming="CharacterEllipsis"/>
 
-            <!-- 关闭按钮 -->
-            <Button Grid.Column="1" Click="CloseBtn_Click"
-                    Width="40" Height="32" Margin="8,4" Background="Transparent"
-                    BorderThickness="0" Foreground="#f1b054" FontSize="16"
-                    Cursor="Hand" Content="✕"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="4">
+                <Button Click="ZoomOutBtn_Click"
+                        Width="36" Height="32" Margin="2,0" Background="Transparent"
+                        BorderThickness="0" Foreground="#f1b054" FontSize="18"
+                        Cursor="Hand" Content="-"/>
+                <Button Click="FitBtn_Click"
+                        MinWidth="56" Height="32" Margin="2,0" Background="Transparent"
+                        BorderThickness="0" Foreground="#f1b054" FontSize="13"
+                        Cursor="Hand" Content="适应"/>
+                <TextBlock x:Name="ZoomDisplay"
+                           Width="56" VerticalAlignment="Center" TextAlignment="Center"
+                           Foreground="#CCCCCC" FontSize="13" Text="100%"/>
+                <Button Click="ZoomInBtn_Click"
+                        Width="36" Height="32" Margin="2,0" Background="Transparent"
+                        BorderThickness="0" Foreground="#f1b054" FontSize="18"
+                        Cursor="Hand" Content="+"/>
+                <Button Click="CloseBtn_Click"
+                        Width="40" Height="32" Margin="8,0,4,0" Background="Transparent"
+                        BorderThickness="0" Foreground="#f1b054" FontSize="16"
+                        Cursor="Hand" Content="✕"/>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>
