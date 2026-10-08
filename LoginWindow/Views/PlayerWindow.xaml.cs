@@ -14,8 +14,9 @@ namespace LoginWindow.Views
         private readonly DispatcherTimer _progressTimer;
         private bool _isPlaying;
         private bool _wasPlayingBeforeDrag;
+        private bool _showPreciseTime;
 
-        public PlayerWindow(string videoPath, IAppLogger logger)
+        public PlayerWindow(string videoPath, IAppLogger logger, bool showPreciseTimeByDefault = false)
         {
             InitializeComponent();
             _videoPath = videoPath;
@@ -29,6 +30,7 @@ namespace LoginWindow.Views
 
             ProgressSlider.DragStarted += ProgressSlider_DragStarted;
             ProgressSlider.DragCompleted += ProgressSlider_DragCompleted;
+            SetPreciseTimeMode(showPreciseTimeByDefault);
 
             Loaded += PlayerWindow_Loaded;
         }
@@ -122,6 +124,12 @@ namespace LoginWindow.Views
             UpdateTimeDisplay();
         }
 
+        private void SetPreciseTimeMode(bool enabled)
+        {
+            _showPreciseTime = enabled;
+            _progressTimer.Interval = TimeSpan.FromMilliseconds(enabled ? 100 : 500);
+        }
+
         private void ProgressTimer_Tick(object? sender, EventArgs e)
         {
             if (!ProgressSlider.IsDragging && Player.NaturalDuration.HasTimeSpan)
@@ -138,7 +146,15 @@ namespace LoginWindow.Views
                 ? Player.NaturalDuration.TimeSpan
                 : TimeSpan.Zero;
 
-            TimeDisplay.Text = $"{current:hh\\:mm\\:ss} / {total:hh\\:mm\\:ss}";
+            TimeDisplay.Text = _showPreciseTime
+                ? $"{FormatPreciseTime(current)} / {FormatPreciseTime(total)}"
+                : $"{current:hh\\:mm\\:ss} / {total:hh\\:mm\\:ss}";
+        }
+
+        private static string FormatPreciseTime(TimeSpan time)
+        {
+            var hours = (int)time.TotalHours;
+            return $"{hours:00}:{time.Minutes:00}:{time.Seconds:00},{time.Milliseconds:000}";
         }
 
         private void CloseBtn_Click(object sender, RoutedEventArgs e)

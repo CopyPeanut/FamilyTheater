@@ -1,5 +1,6 @@
 using FamilyTheater.Core.Data;
 using FamilyTheater.Core.Logger;
+using FamilyTheater.Core.Services;
 using LoginWindow.Models;
 using ReactiveUI;
 using System;
@@ -19,6 +20,7 @@ namespace LoginWindow.Views
     {
         private readonly HomeWindowModel _viewModel;
         private readonly IAppLogger _logger;
+        private readonly ISettingService _settingService;
         private readonly Func<Login> _loginWindowFactory;
         private readonly DispatcherTimer _pageWheelTimer;
         private readonly HashSet<Window> _presentationWindows = new();
@@ -49,11 +51,12 @@ namespace LoginWindow.Views
             set => throw new NotImplementedException();
         }
 
-        public HomeWindow(HomeWindowModel viewModel, IAppLogger logger, Func<Login> loginWindowFactory)
+        public HomeWindow(HomeWindowModel viewModel, IAppLogger logger, ISettingService settingService, Func<Login> loginWindowFactory)
         {
             InitializeComponent();
             _viewModel = viewModel;
             _logger = logger;
+            _settingService = settingService;
             _loginWindowFactory = loginWindowFactory;
             _pageWheelTimer = new DispatcherTimer
             {
@@ -265,7 +268,10 @@ namespace LoginWindow.Views
                 return;
             }
 
-            var player = new PlayerWindow(movie.VideoFilePath, _logger);
+            var player = new PlayerWindow(
+                movie.VideoFilePath,
+                _logger,
+                await _settingService.GetPlayerPreciseTimeEnabledAsync());
             ShowPresentationWindow(player);
         }
 

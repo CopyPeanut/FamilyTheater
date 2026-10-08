@@ -13,6 +13,7 @@ public class SettingService : ISettingService
     private const string GamePosterRootPathKey = "GamePosterRootPath";
     private const string MangaRootPathKey = "MangaRootPath";
     private const string MangaPosterRootPathKey = "MangaPosterRootPath";
+    private const string PlayerPreciseTimeEnabledKey = "PlayerPreciseTimeEnabled";
 
     private readonly ILibraryDbContextFactory _dbContextFactory;
     private readonly IAppLogger _logger;
@@ -79,4 +80,14 @@ public class SettingService : ISettingService
     public Task<string?> GetPictureRootPathAsync() => GetAsync(PictureRootPathKey);
 
     public Task SetPictureRootPathAsync(string path) => SetAsync(PictureRootPathKey, path);
+
+    public async Task<bool> GetPlayerPreciseTimeEnabledAsync()
+    {
+        var value = await GetAsync(PlayerPreciseTimeEnabledKey);
+        return string.Equals(value, bool.TrueString, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(value, "1", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public Task SetPlayerPreciseTimeEnabledAsync(bool enabled) =>
+        SetAsync(PlayerPreciseTimeEnabledKey, enabled.ToString());
 }
