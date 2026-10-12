@@ -74,44 +74,92 @@ namespace LoginWindow.Views
             SizeChanged += HomeWindow_SizeChanged;
             viewModel.WhenAnyValue(model => model.ActiveCategory)
                 .Skip(1)
-                .Subscribe(_ => ScheduleDynamicPageSizeUpdate());
+                .Subscribe(_ => ApplyAdaptiveCoverLayoutForCategoryChange());
         }
 
         private async void HomeWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            UpdateAdaptiveCoverLayout();
             await _viewModel.LoadMoviesAsync();
-            ScheduleDynamicPageSizeUpdate();
+            UpdateAdaptiveCoverLayout();
         }
 
         private void HomeWindow_ContentRendered(object? sender, EventArgs e)
         {
-            ScheduleDynamicPageSizeUpdate();
+            ScheduleAdaptiveCoverLayoutUpdate();
         }
 
         private void HomeWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            ScheduleDynamicPageSizeUpdate();
+            ScheduleAdaptiveCoverLayoutUpdate();
         }
 
-        private void ScheduleDynamicPageSizeUpdate()
+        private void ScheduleAdaptiveCoverLayoutUpdate()
         {
-            Dispatcher.BeginInvoke(UpdateDynamicPageSize, DispatcherPriority.ContextIdle);
+            Dispatcher.BeginInvoke(UpdateAdaptiveCoverLayout, DispatcherPriority.ContextIdle);
         }
 
-        private void UpdateDynamicPageSize()
+        private void ApplyAdaptiveCoverLayoutForCategoryChange()
         {
-            var viewport = GetActiveItemsViewport();
-            if (viewport == null ||
-                viewport.ActualWidth <= 0 ||
-                viewport.ActualHeight <= 0)
+            UpdateAdaptiveCoverLayout();
+            ScheduleAdaptiveCoverLayoutUpdate();
+        }
+
+        private void UpdateAdaptiveCoverLayout()
+        {
+            if (!TryGetItemsViewportSize(out var viewportWidth, out var viewportHeight))
             {
                 return;
             }
 
-            var (itemWidth, itemHeight) = GetActiveItemFootprint();
-            var columns = Math.Max(1, (int)Math.Floor(viewport.ActualWidth / itemWidth));
-            var rows = Math.Max(1, (int)Math.Floor(viewport.ActualHeight / itemHeight));
-            _viewModel.UpdatePageSize(columns * rows);
+            var metrics = GetActiveCoverLayoutMetrics();
+            var availableWidth = Math.Max(1, viewportWidth - 8);
+            var availableHeight = Math.Max(1, viewportHeight - 8);
+            var scale = CalculateCoverScale(availableWidth, availableHeight, metrics);
+            var margin = Math.Clamp(metrics.Margin * scale, 4, 14);
+
+            _viewModel.UpdateCoverLayout(
+                cardWidth: Math.Round(metrics.CardWidth * scale, 1),
+                cardHeight: Math.Round(metrics.CardHeight * scale, 1),
+                mediaWidth: Math.Round(metrics.MediaWidth * scale, 1),
+                mediaHeight: Math.Round(metrics.MediaHeight * scale, 1),
+                titleMaxWidth: Math.Round(metrics.TitleMaxWidth * scale, 1),
+                titleFontSize: Math.Round(Math.Clamp(metrics.TitleFontSize * scale, 10, 16), 1),
+                placeholderIconFontSize: Math.Round(Math.Clamp(metrics.PlaceholderIconFontSize * scale, 18, 64), 1),
+                placeholderLabelFontSize: Math.Round(Math.Clamp(metrics.PlaceholderLabelFontSize * scale, 10, 20), 1),
+                cardMargin: new Thickness(Math.Round(margin, 1)));
+        }
+
+        private bool TryGetItemsViewportSize(out double width, out double height)
+        {
+            var viewport = GetActiveItemsViewport();
+            if (HasUsableSize(viewport))
+            {
+                width = viewport!.ActualWidth;
+                height = viewport.ActualHeight;
+                return true;
+            }
+
+            foreach (var candidate in new[] { MovieItemsViewport, PictureItemsViewport, MangaItemsViewport, GameItemsViewport })
+            {
+                if (HasUsableSize(candidate))
+                {
+                    width = candidate.ActualWidth;
+                    height = candidate.ActualHeight;
+                    return true;
+                }
+            }
+
+            width = 0;
+            height = 0;
+            return false;
+        }
+
+        private static bool HasUsableSize(FrameworkElement? element)
+        {
+            return element != null &&
+                   element.ActualWidth > 0 &&
+                   element.ActualHeight > 0;
         }
 
         private FrameworkElement? GetActiveItemsViewport()
@@ -125,16 +173,75 @@ namespace LoginWindow.Views
                         : MovieItemsViewport;
         }
 
-        private (double Width, double Height) GetActiveItemFootprint()
+        private CoverLayoutMetrics GetActiveCoverLayoutMetrics()
         {
             return _viewModel.ActiveCategory.Equals("picture", StringComparison.OrdinalIgnoreCase)
-                ? (216, 216)
+                ? new CoverLayoutMetrics(
+                    CardWidth: 200,
+                    CardHeight: 200,
+                    MediaWidth: 200,
+                    MediaHeight: 200,
+                    TitleMaxWidth: 190,
+                    TitleFontSize: 13,
+                    PlaceholderIconFontSize: 48,
+                    PlaceholderLabelFontSize: 16,
+                    Margin: 8)
                 : _viewModel.ActiveCategory.Equals("game", StringComparison.OrdinalIgnoreCase)
-                    ? (200, 300)
-                    : _viewModel.ActiveCategory.Equals("manga", StringComparison.OrdinalIgnoreCase)
-                        ? (196, 296)
-                        : (196, 296);
+                    ? new CoverLayoutMetrics(
+                        CardWidth: 180,
+                        CardHeight: 280,
+                        MediaWidth: 180,
+                        MediaHeight: 240,
+                        TitleMaxWidth: 170,
+                        TitleFontSize: 13,
+                        PlaceholderIconFontSize: 28,
+                        PlaceholderLabelFontSize: 16,
+                        Margin: 10)
+                    : new CoverLayoutMetrics(
+                        CardWidth: 180,
+                        CardHeight: 280,
+                        MediaWidth: 180,
+                        MediaHeight: 240,
+                        TitleMaxWidth: 170,
+                        TitleFontSize: 13,
+                        PlaceholderIconFontSize: 48,
+                        PlaceholderLabelFontSize: 16,
+                        Margin: 8);
         }
+
+        private double CalculateCoverScale(double availableWidth, double availableHeight, CoverLayoutMetrics metrics)
+        {
+            var pageSize = Math.Max(1, _viewModel.PageSize);
+            var bestScale = 0.1;
+            var footprintWidth = metrics.CardWidth + metrics.Margin * 2;
+            var footprintHeight = metrics.CardHeight + metrics.Margin * 2;
+
+            for (var columns = 1; columns <= pageSize; columns++)
+            {
+                var rows = (int)Math.Ceiling(pageSize / (double)columns);
+                var scale = Math.Min(
+                    availableWidth / (columns * footprintWidth),
+                    availableHeight / (rows * footprintHeight));
+
+                if (scale > bestScale)
+                {
+                    bestScale = scale;
+                }
+            }
+
+            return Math.Clamp(bestScale, 0.45, 1.6);
+        }
+
+        private sealed record CoverLayoutMetrics(
+            double CardWidth,
+            double CardHeight,
+            double MediaWidth,
+            double MediaHeight,
+            double TitleMaxWidth,
+            double TitleFontSize,
+            double PlaceholderIconFontSize,
+            double PlaceholderLabelFontSize,
+            double Margin);
 
         private void ItemsViewport_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {

@@ -371,7 +371,10 @@
                       </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                           <DataTemplate>
-                              <Border Width="180" Height="280" Margin="8" Background="#2A2A28"
+                              <Border Width="{Binding DataContext.CoverCardWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Height="{Binding DataContext.CoverCardHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Margin="{Binding DataContext.CoverCardMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Background="#2A2A28"
                                       BorderThickness="3"
                                       CornerRadius="8" ClipToBounds="True"
                                       MouseLeftButtonDown="MovieCard_Click"
@@ -387,7 +390,9 @@
                                   <StackPanel>
                                       <!-- 海报图片（PosterPath 非空时显示） -->
                                       <Image Source="{Binding PosterPath}"
-                                             Width="180" Height="240" Stretch="UniformToFill"
+                                             Width="{Binding DataContext.CoverMediaWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                             Height="{Binding DataContext.CoverMediaHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                             Stretch="UniformToFill"
                                              HorizontalAlignment="Center">
                                           <Image.Style>
                                               <Style TargetType="Image">
@@ -401,7 +406,9 @@
                                       </Image>
               
                                       <!-- 海报占位（PosterPath 为 null 时显示） -->
-                                      <Grid Width="180" Height="240" Background="#3A3A38">
+                                      <Grid Width="{Binding DataContext.CoverMediaWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Height="{Binding DataContext.CoverMediaHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Background="#3A3A38">
                                           <Grid.Style>
                                               <Style TargetType="Grid">
                                                   <Setter Property="Visibility" Value="Collapsed"/>
@@ -412,15 +419,19 @@
                                                   </Style.Triggers>
                                               </Style>
                                           </Grid.Style>
-                                          <TextBlock Text="🎬" FontSize="48" Foreground="#666666"
+                                          <TextBlock Text="🎬"
+                                                     FontSize="{Binding DataContext.CoverPlaceholderIconFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                     Foreground="#666666"
                                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                       </Grid>
               
                                       <!-- 标题 -->
-                                      <TextBlock Text="{Binding Title}" Foreground="#E0E0E0" FontSize="13"
+                                      <TextBlock Text="{Binding Title}" Foreground="#E0E0E0"
+                                                 FontSize="{Binding DataContext.CoverTitleFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                                  Margin="5,8,5,5" TextTrimming="CharacterEllipsis"
-                                                 TextWrapping="NoWrap" MaxWidth="170"/>
+                                                 TextWrapping="NoWrap"
+                                                 MaxWidth="{Binding DataContext.CoverTitleMaxWidth, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                   </StackPanel>
                               </Border>
                           </DataTemplate>
@@ -440,7 +451,10 @@
                       </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                           <DataTemplate>
-                              <Border Width="200" Height="200" Margin="8" Background="#2A2A28"
+                              <Border Width="{Binding DataContext.CoverCardWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Height="{Binding DataContext.CoverCardHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Margin="{Binding DataContext.CoverCardMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Background="#2A2A28"
                                       BorderThickness="3"
                                       CornerRadius="8" ClipToBounds="True"
                                       MouseLeftButtonDown="PictureCard_Click"
@@ -454,6 +468,8 @@
                                       </MultiBinding>
                                   </Border.BorderBrush>
                                   <Image Source="{Binding FilePath, Converter={StaticResource StringToImage}}"
+                                         Width="{Binding DataContext.CoverMediaWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                         Height="{Binding DataContext.CoverMediaHeight, RelativeSource={RelativeSource AncestorType=Window}}"
                                          Stretch="UniformToFill"
                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
                               </Border>
@@ -474,7 +490,10 @@
                       </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                           <DataTemplate>
-                              <Border Width="180" Height="280" Margin="8" Background="#2A2A28"
+                              <Border Width="{Binding DataContext.CoverCardWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Height="{Binding DataContext.CoverCardHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Margin="{Binding DataContext.CoverCardMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Background="#2A2A28"
                                       BorderThickness="3"
                                       CornerRadius="8" ClipToBounds="True" Cursor="Hand"
                                       MouseLeftButtonDown="MangaCard_Click"
@@ -488,7 +507,9 @@
                                       </MultiBinding>
                                   </Border.BorderBrush>
                                   <StackPanel>
-                                      <Grid Width="180" Height="240" Background="#3A3A38">
+                                      <Grid Width="{Binding DataContext.CoverMediaWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Height="{Binding DataContext.CoverMediaHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Background="#3A3A38">
                                           <Image Source="{Binding PosterPath, Converter={StaticResource StringToImage}}"
                                                  Stretch="UniformToFill"/>
                                           <Grid>
@@ -503,10 +524,14 @@
                                                   </Style>
                                               </Grid.Style>
                                               <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                  <TextBlock Text="PDF" FontSize="36" FontWeight="Bold"
+                                                  <TextBlock Text="PDF"
+                                                             FontSize="{Binding DataContext.CoverPlaceholderIconFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                             FontWeight="Bold"
                                                              Foreground="#f1b054"
                                                              HorizontalAlignment="Center"/>
-                                                  <TextBlock Text="MANGA" FontSize="16" FontWeight="Bold"
+                                                  <TextBlock Text="MANGA"
+                                                             FontSize="{Binding DataContext.CoverPlaceholderLabelFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                             FontWeight="Bold"
                                                              Foreground="#777777"
                                                              HorizontalAlignment="Center"
                                                              Margin="0,8,0,0"/>
@@ -514,10 +539,12 @@
                                           </Grid>
                                       </Grid>
 
-                                      <TextBlock Text="{Binding Title}" Foreground="#E0E0E0" FontSize="13"
+                                      <TextBlock Text="{Binding Title}" Foreground="#E0E0E0"
+                                                 FontSize="{Binding DataContext.CoverTitleFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                                  Margin="5,8,5,5" TextTrimming="CharacterEllipsis"
-                                                 TextWrapping="NoWrap" MaxWidth="170"/>
+                                                 TextWrapping="NoWrap"
+                                                 MaxWidth="{Binding DataContext.CoverTitleMaxWidth, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                   </StackPanel>
                               </Border>
                           </DataTemplate>
@@ -537,7 +564,10 @@
                       </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                           <DataTemplate>
-                              <Border Width="180" Height="280" Margin="10" Background="#2A2A28"
+                              <Border Width="{Binding DataContext.CoverCardWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Height="{Binding DataContext.CoverCardHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Margin="{Binding DataContext.CoverCardMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Background="#2A2A28"
                                       BorderThickness="3"
                                       CornerRadius="8" ClipToBounds="True" Cursor="Hand"
                                       MouseLeftButtonDown="GameCard_Click"
@@ -551,7 +581,9 @@
                                       </MultiBinding>
                                   </Border.BorderBrush>
                                   <StackPanel>
-                                      <Grid Width="180" Height="240" Background="#1A1A19">
+                                      <Grid Width="{Binding DataContext.CoverMediaWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Height="{Binding DataContext.CoverMediaHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Background="#1A1A19">
                                           <Image Source="{Binding PosterPath, Converter={StaticResource StringToImage}}"
                                                  Stretch="UniformToFill"/>
                                           <Grid>
@@ -565,16 +597,20 @@
                                                       </Style.Triggers>
                                                   </Style>
                                               </Grid.Style>
-                                              <TextBlock Text="GAME" FontSize="28" FontWeight="Bold"
+                                              <TextBlock Text="GAME"
+                                                         FontSize="{Binding DataContext.CoverPlaceholderIconFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         FontWeight="Bold"
                                                          Foreground="#666666"
                                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                           </Grid>
                                       </Grid>
 
-                                      <TextBlock Text="{Binding Title}" Foreground="#E0E0E0" FontSize="13"
+                                      <TextBlock Text="{Binding Title}" Foreground="#E0E0E0"
+                                                 FontSize="{Binding DataContext.CoverTitleFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                                  Margin="5,8,5,5" TextTrimming="CharacterEllipsis"
-                                                 TextWrapping="NoWrap" MaxWidth="170"/>
+                                                 TextWrapping="NoWrap"
+                                                 MaxWidth="{Binding DataContext.CoverTitleMaxWidth, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                   </StackPanel>
                               </Border>
                           </DataTemplate>

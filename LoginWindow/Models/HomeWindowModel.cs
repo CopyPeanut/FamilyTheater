@@ -82,6 +82,15 @@ namespace LoginWindow.Models
         [Reactive] public string SearchText { get; set; } = string.Empty;
         [Reactive] public string ActiveCategory { get; set; } = "movie";
         [Reactive] public int PageSize { get; private set; } = DefaultPageSize;
+        [Reactive] public double CoverCardWidth { get; private set; } = 180;
+        [Reactive] public double CoverCardHeight { get; private set; } = 280;
+        [Reactive] public double CoverMediaWidth { get; private set; } = 180;
+        [Reactive] public double CoverMediaHeight { get; private set; } = 240;
+        [Reactive] public double CoverTitleMaxWidth { get; private set; } = 170;
+        [Reactive] public double CoverTitleFontSize { get; private set; } = 13;
+        [Reactive] public double CoverPlaceholderIconFontSize { get; private set; } = 48;
+        [Reactive] public double CoverPlaceholderLabelFontSize { get; private set; } = 16;
+        [Reactive] public Thickness CoverCardMargin { get; private set; } = new(8);
         [Reactive] public bool IsBatchDeleteMode { get; private set; }
         [Reactive] public int BatchSelectionVersion { get; private set; }
         public bool IsAdmin => _currentUserSession.IsAdmin;
@@ -581,6 +590,49 @@ namespace LoginWindow.Models
             PageSize = normalizedPageSize;
             CurrentPage = firstVisibleItemIndex / PageSize + 1;
             ApplyActiveCategoryFilter();
+        }
+
+        public void UpdateCoverLayout(
+            double cardWidth,
+            double cardHeight,
+            double mediaWidth,
+            double mediaHeight,
+            double titleMaxWidth,
+            double titleFontSize,
+            double placeholderIconFontSize,
+            double placeholderLabelFontSize,
+            Thickness cardMargin)
+        {
+            if (AreClose(CoverCardWidth, cardWidth) &&
+                AreClose(CoverCardHeight, cardHeight) &&
+                AreClose(CoverMediaWidth, mediaWidth) &&
+                AreClose(CoverMediaHeight, mediaHeight) &&
+                AreClose(CoverTitleMaxWidth, titleMaxWidth) &&
+                AreClose(CoverTitleFontSize, titleFontSize) &&
+                AreClose(CoverPlaceholderIconFontSize, placeholderIconFontSize) &&
+                AreClose(CoverPlaceholderLabelFontSize, placeholderLabelFontSize) &&
+                AreClose(CoverCardMargin.Left, cardMargin.Left) &&
+                AreClose(CoverCardMargin.Top, cardMargin.Top) &&
+                AreClose(CoverCardMargin.Right, cardMargin.Right) &&
+                AreClose(CoverCardMargin.Bottom, cardMargin.Bottom))
+            {
+                return;
+            }
+
+            CoverCardWidth = cardWidth;
+            CoverCardHeight = cardHeight;
+            CoverMediaWidth = mediaWidth;
+            CoverMediaHeight = mediaHeight;
+            CoverTitleMaxWidth = titleMaxWidth;
+            CoverTitleFontSize = titleFontSize;
+            CoverPlaceholderIconFontSize = placeholderIconFontSize;
+            CoverPlaceholderLabelFontSize = placeholderLabelFontSize;
+            CoverCardMargin = cardMargin;
+        }
+
+        private static bool AreClose(double left, double right)
+        {
+            return Math.Abs(left - right) < 0.05;
         }
 
         private async Task LoadCategoryAsync(string category)
