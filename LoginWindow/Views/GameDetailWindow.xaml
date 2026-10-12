@@ -76,21 +76,25 @@
                 </Grid>
 
                 <TextBlock Text="Tag" Foreground="#888888" FontSize="12" Margin="0,0,0,6"/>
-                <ItemsControl x:Name="GameTagsList">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Content="{Binding}" Click="RemoveTag_Click"
-                                    Margin="0,0,8,6" Padding="10,4" FontSize="13"
-                                    Cursor="Hand" BorderThickness="0"
-                                    Background="#f1b054" Foreground="#1E1E1D"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <local:WholeLineScrollViewer LineHeight="34" MaxHeight="68"
+                                             VerticalScrollBarVisibility="Auto"
+                                             HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="GameTagsList">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding}" Click="RemoveTag_Click"
+                                        Margin="0,0,8,6" Padding="10,0" Height="28" FontSize="13"
+                                        Cursor="Hand" BorderThickness="0"
+                                        Background="#f1b054" Foreground="#1E1E1D"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </local:WholeLineScrollViewer>
             </StackPanel>
 
             <Border Grid.Column="1" Width="200" Height="280" CornerRadius="8"
@@ -166,7 +170,7 @@
                             BorderThickness="0" Cursor="Hand" FontSize="13"/>
                 </Grid>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <local:WholeLineScrollViewer Grid.Row="1" LineHeight="34" VerticalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="AllTagsList">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -176,7 +180,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button Content="{Binding Name}" Click="ToggleTag_Click"
-                                        Margin="0,0,8,6" Padding="12,4" FontSize="13"
+                                        Margin="0,0,8,6" Padding="12,0" Height="28" FontSize="13"
                                         Cursor="Hand" BorderThickness="0">
                                     <Button.Style>
                                         <Style TargetType="Button">
@@ -194,7 +198,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </ScrollViewer>
+                </local:WholeLineScrollViewer>
             </Grid>
         </Border>
     </Grid>

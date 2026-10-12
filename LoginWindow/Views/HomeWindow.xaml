@@ -295,9 +295,10 @@
                     </Grid>
 
                     <!-- 2. 标签筛选区 -->
-                    <ScrollViewer Grid.Row="1"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
+                    <local:WholeLineScrollViewer Grid.Row="1"
+                                                 LineHeight="36"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl ItemsSource="{Binding Tags}" Margin="10,5,10,5">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -310,7 +311,7 @@
                     Command="{Binding DataContext.ToggleTagCmd, RelativeSource={RelativeSource AncestorType=Window}}"
                     CommandParameter="{Binding Name}"
                     MouseRightButtonUp="TagButton_RightClick"
-                    Margin="0,0,8,8" Padding="12,4" FontSize="13"
+                    Margin="0,0,8,8" Padding="12,0" Height="28" FontSize="13"
                     Cursor="Hand" BorderThickness="1">
                                         <Button.Style>
                                             <Style TargetType="Button">
@@ -354,7 +355,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </ScrollViewer>
+                    </local:WholeLineScrollViewer>
 
                 </Grid>
             </Border>
