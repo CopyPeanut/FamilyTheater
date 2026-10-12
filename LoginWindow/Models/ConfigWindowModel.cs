@@ -36,10 +36,12 @@ namespace LoginWindow.Models
         [Reactive] public string StatusMessage { get; set; } = string.Empty;
         [Reactive] public bool IsScanning { get; set; }
         [Reactive] public string ActiveConfigPage { get; set; } = "Library";
+        [Reactive] public bool PlayerPreciseTimeEnabled { get; set; }
 
         public ReactiveCommand<string, Unit> SetConfigPageCommand { get; }
         public ReactiveCommand<string, Unit> BrowseCommand { get; }
         public ReactiveCommand<Unit, Unit> SaveCommand { get; }
+        public ReactiveCommand<Unit, Unit> SaveSystemSettingsCommand { get; }
         public ReactiveCommand<Unit, Unit> FullMovieScanCommand { get; }
         public ReactiveCommand<Unit, Unit> FullPictureScanCommand { get; }
         public ReactiveCommand<Unit, Unit> FullMangaScanCommand { get; }
@@ -74,6 +76,7 @@ namespace LoginWindow.Models
             var canClearLibrary = this.WhenAnyValue(x => x.IsScanning, scanning => !scanning && IsAdmin);
             SetConfigPageCommand = ReactiveCommand.Create<string>(page => ActiveConfigPage = page);
             SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
+            SaveSystemSettingsCommand = ReactiveCommand.CreateFromTask(SaveSystemSettingsAsync, canSave);
             FullMovieScanCommand = ReactiveCommand.CreateFromTask(FullMovieScanAsync, canSave);
             FullPictureScanCommand = ReactiveCommand.CreateFromTask(FullPictureScanAsync, canSave);
             FullMangaScanCommand = ReactiveCommand.CreateFromTask(FullMangaScanAsync, canSave);
@@ -100,6 +103,7 @@ namespace LoginWindow.Models
                 GamePosterRootPath = await _settingService.GetGamePosterRootPathAsync() ?? string.Empty;
                 MangaRootPath = await _settingService.GetMangaRootPathAsync() ?? string.Empty;
                 MangaPosterRootPath = await _settingService.GetMangaPosterRootPathAsync() ?? string.Empty;
+                PlayerPreciseTimeEnabled = await _settingService.GetPlayerPreciseTimeEnabledAsync();
             }
             catch (Exception ex)
             {
@@ -391,6 +395,28 @@ namespace LoginWindow.Models
             await _settingService.SetMangaPosterRootPathAsync(MangaPosterRootPath ?? string.Empty);
             await _settingService.SetGameRootPathAsync(GameRootPath ?? string.Empty);
             await _settingService.SetGamePosterRootPathAsync(GamePosterRootPath ?? string.Empty);
+            await _settingService.SetPlayerPreciseTimeEnabledAsync(PlayerPreciseTimeEnabled);
+        }
+
+        private async Task SaveSystemSettingsAsync()
+        {
+            IsScanning = true;
+            StatusMessage = "正在保存系统设置...";
+
+            try
+            {
+                await _settingService.SetPlayerPreciseTimeEnabledAsync(PlayerPreciseTimeEnabled);
+                StatusMessage = "系统设置已保存。新打开的视频播放器会使用该设置。";
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("保存系统设置失败。", ex);
+                StatusMessage = $"保存系统设置失败：{ex.Message}；详细日志：{GetCurrentLogFilePath()}";
+            }
+            finally
+            {
+                IsScanning = false;
+            }
         }
 
         private async Task<ScanResult> RunScanStageAsync(string stageName, Func<Task<ScanResult>> scanAction)

@@ -121,6 +121,59 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="SwitchToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="86"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                            <Border x:Name="Track"
+                                    CornerRadius="18"
+                                    Background="#3A3A3A"
+                                    BorderBrush="#555555"
+                                    BorderThickness="1"/>
+                            <TextBlock x:Name="StateText"
+                                       Text="关"
+                                       Foreground="#B8B8B8"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Right"
+                                       Margin="0,0,14,0"/>
+                            <Ellipse x:Name="Thumb"
+                                     Width="28"
+                                     Height="28"
+                                     Fill="#DCDCDC"
+                                     HorizontalAlignment="Left"
+                                     Margin="4,0,0,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="#f1b054"/>
+                                <Setter TargetName="Track" Property="BorderBrush" Value="#f1b054"/>
+                                <Setter TargetName="StateText" Property="Text" Value="开"/>
+                                <Setter TargetName="StateText" Property="Foreground" Value="#1E1E1D"/>
+                                <Setter TargetName="StateText" Property="HorizontalAlignment" Value="Left"/>
+                                <Setter TargetName="StateText" Property="Margin" Value="14,0,0,0"/>
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="Thumb" Property="Margin" Value="0,0,4,0"/>
+                                <Setter TargetName="Thumb" Property="Fill" Value="#1E1E1D"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.45"/>
+                                <Setter TargetName="Thumb" Property="Opacity" Value="0.65"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -149,6 +202,20 @@
                             <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding ActiveConfigPage}" Value="Library">
+                                        <Setter Property="Background" Value="#f1b054"/>
+                                        <Setter Property="Foreground" Value="#1E1E1D"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Content="系统"
+                            Command="{Binding SetConfigPageCommand}"
+                            CommandParameter="System">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveConfigPage}" Value="System">
                                         <Setter Property="Background" Value="#f1b054"/>
                                         <Setter Property="Foreground" Value="#1E1E1D"/>
                                     </DataTrigger>
@@ -308,6 +375,61 @@
                             <TextBlock Text="{Binding StatusMessage}" Foreground="Gray" FontSize="12" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Grid>
+                </ScrollViewer>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer.Style>
+                        <Style TargetType="ScrollViewer">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActiveConfigPage}" Value="System">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ScrollViewer.Style>
+                    <StackPanel Margin="30,24">
+                        <TextBlock Text="系统设置" Foreground="#f1b054" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
+
+                        <Border Background="#262626" CornerRadius="8" Padding="18" Margin="0,0,0,18">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                    <TextBlock Text="播放器精确时间显示"
+                                               Foreground="#F0F0F0"
+                                               FontSize="15"
+                                               FontWeight="Bold"
+                                               Margin="0,0,0,6"/>
+                                </StackPanel>
+                                <ToggleButton Grid.Column="1"
+                                              IsChecked="{Binding PlayerPreciseTimeEnabled, Mode=TwoWay}"
+                                              Style="{StaticResource SwitchToggleStyle}"/>
+                            </Grid>
+                        </Border>
+
+                        <Button Content="保存系统设置"
+                                Command="{Binding SaveSystemSettingsCommand}"
+                                Width="160"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource ScanButtonStyle}"/>
+
+                        <ProgressBar Height="6" IsIndeterminate="True" Margin="0,18,0,8">
+                            <ProgressBar.Style>
+                                <Style TargetType="ProgressBar">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ProgressBar.Style>
+                        </ProgressBar>
+                        <TextBlock Text="{Binding StatusMessage}" Foreground="Gray" FontSize="12" TextWrapping="Wrap"/>
+                    </StackPanel>
                 </ScrollViewer>
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto">

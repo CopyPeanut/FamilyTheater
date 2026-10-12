@@ -61,5 +61,9 @@ namespace FamilyTheater.Core.Services
         /// 写入图片根目录配置。
         /// </summary>
         Task SetPictureRootPathAsync(string path);
+
+        Task<bool> GetPlayerPreciseTimeEnabledAsync();
+
+        Task SetPlayerPreciseTimeEnabledAsync(bool enabled);
     }
 }
