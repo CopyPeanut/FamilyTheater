@@ -4,6 +4,120 @@
         xmlns:local="clr-namespace:LoginWindow.Views"
         Title="播放" Background="Black" WindowState="Maximized"
         WindowStyle="SingleBorderWindow" ResizeMode="CanResize">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PlayerControlBackgroundBrush" Color="#1E1E1D"/>
+        <SolidColorBrush x:Key="PlayerControlBorderBrush" Color="#555555"/>
+        <SolidColorBrush x:Key="PlayerControlHoverBrush" Color="#2F2F2D"/>
+        <SolidColorBrush x:Key="PlayerControlAccentBrush" Color="#f1b054"/>
+
+        <Style x:Key="PlaybackSpeedComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource PlayerControlAccentBrush}"/>
+            <Setter Property="Background" Value="{StaticResource PlayerControlBackgroundBrush}"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource PlayerControlHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#3A2B1D"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PlaybackSpeedComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{StaticResource PlayerControlAccentBrush}"/>
+            <Setter Property="Background" Value="{StaticResource PlayerControlBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PlayerControlBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,0,8,0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource PlaybackSpeedComboBoxItemStyle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ToggleBorder"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="4">
+                                            <Grid>
+                                                <TextBlock Margin="10,0,28,0"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Left"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                           Text="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"/>
+                                                <Path x:Name="Arrow"
+                                                      Width="10" Height="6"
+                                                      HorizontalAlignment="Right"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,10,0"
+                                                      Data="M 0 0 L 5 5 L 10 0"
+                                                      Stroke="{StaticResource PlayerControlAccentBrush}"
+                                                      StrokeThickness="1.5"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="Background" Value="{StaticResource PlayerControlHoverBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="{StaticResource PlayerControlAccentBrush}"/>
+                                                <Setter TargetName="Arrow" Property="Data" Value="M 0 5 L 5 0 L 10 5"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Top"
+                                   PopupAnimation="Fade">
+                                <Border Background="{StaticResource PlayerControlBackgroundBrush}"
+                                        BorderBrush="{StaticResource PlayerControlBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        MinWidth="{TemplateBinding ActualWidth}">
+                                    <ScrollViewer MaxHeight="180">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -46,6 +160,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <!-- 播放/暂停按钮 -->
@@ -65,14 +180,28 @@
                        Foreground="#CCCCCC" FontSize="13" Margin="10,0"
                        Text="00:00 / 00:00"/>
 
-            <Button x:Name="LoadSubtitleBtn" Grid.Column="3" Click="LoadSubtitleBtn_Click"
+            <ComboBox x:Name="PlaybackSpeedComboBox" Grid.Column="3"
+                      Width="76" Height="32" Margin="4"
+                      VerticalContentAlignment="Center"
+                      Style="{StaticResource PlaybackSpeedComboBoxStyle}"
+                      SelectedIndex="2"
+                      SelectionChanged="PlaybackSpeedComboBox_SelectionChanged"
+                      ToolTip="倍速">
+                <ComboBoxItem Content="0.25x" Tag="0.25"/>
+                <ComboBoxItem Content="0.5x" Tag="0.5"/>
+                <ComboBoxItem Content="1x" Tag="1"/>
+                <ComboBoxItem Content="1.5x" Tag="1.5"/>
+                <ComboBoxItem Content="2x" Tag="2"/>
+            </ComboBox>
+
+            <Button x:Name="LoadSubtitleBtn" Grid.Column="4" Click="LoadSubtitleBtn_Click"
                     MinWidth="64" Height="32" Margin="4"
                     Background="Transparent" BorderBrush="#555555" BorderThickness="1"
                     Foreground="#f1b054" FontSize="13" Cursor="Hand"
                     Content="字幕"/>
 
             <!-- 关闭按钮 -->
-            <Button Grid.Column="4" Click="CloseBtn_Click"
+            <Button Grid.Column="5" Click="CloseBtn_Click"
                     Width="40" Height="32" Margin="8,4" Background="Transparent"
                     BorderThickness="0" Foreground="#f1b054" FontSize="16"
                     Cursor="Hand" Content="✕"/>

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -20,6 +21,7 @@ namespace LoginWindow.Views
         private bool _isPlaying;
         private bool _wasPlayingBeforeDrag;
         private bool _showPreciseTime;
+        private double _playbackSpeed = 1.0;
         private List<SubtitleCue> _subtitleCues = new();
         private int _activeSubtitleIndex = -1;
 
@@ -50,6 +52,7 @@ namespace LoginWindow.Views
             }
 
             Player.Source = new Uri(_videoPath, UriKind.Absolute);
+            ApplyPlaybackSpeed();
             Player.Play();
         }
 
@@ -57,6 +60,7 @@ namespace LoginWindow.Views
         {
             _isPlaying = true;
             PlayPauseIcon.Text = "⏸";
+            ApplyPlaybackSpeed();
             _progressTimer.Start();
 
             if (Player.NaturalDuration.HasTimeSpan)
@@ -142,6 +146,7 @@ namespace LoginWindow.Views
             else
             {
                 Player.Play();
+                ApplyPlaybackSpeed();
                 _isPlaying = true;
                 PlayPauseIcon.Text = "⏸";
                 _progressTimer.Start();
@@ -168,9 +173,31 @@ namespace LoginWindow.Views
             if (_wasPlayingBeforeDrag)
             {
                 Player.Play();
+                ApplyPlaybackSpeed();
                 _isPlaying = true;
                 PlayPauseIcon.Text = "⏸";
                 _progressTimer.Start();
+            }
+        }
+
+        private void PlaybackSpeedComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (PlaybackSpeedComboBox.SelectedItem is not ComboBoxItem selectedItem ||
+                selectedItem.Tag is not string speedText ||
+                !double.TryParse(speedText, NumberStyles.Float, CultureInfo.InvariantCulture, out var speed))
+            {
+                return;
+            }
+
+            _playbackSpeed = speed;
+            ApplyPlaybackSpeed();
+        }
+
+        private void ApplyPlaybackSpeed()
+        {
+            if (Player is not null)
+            {
+                Player.SpeedRatio = _playbackSpeed;
             }
         }
 
